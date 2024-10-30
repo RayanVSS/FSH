@@ -12,7 +12,6 @@
 
 // Définir les codes de couleur ANSI
 #define COLOR_RESET "\033[0m"
-
 #define COLOR_DIR   "\033[34m" // Bleu  répertoires
 #define COLOR_EXEC  "\033[32m" // Vert exécutables
 #define COLOR_LINK  "\033[36m" // Cyan  liens symboliques

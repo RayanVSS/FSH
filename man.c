@@ -40,6 +40,16 @@ int execute_man(char **args) {
         fprintf(temp_file, "NOM\n       clear - efface l'écran du terminal.\n\n");
         fprintf(temp_file, "SYNOPSIS\n       clear\n\n");
         fprintf(temp_file, "DESCRIPTION\n       Efface l'écran du terminal et repositionne le curseur en haut à gauche.\n");
+    }else if (strcmp(args[1], "tree")==0){
+        fprintf(temp_file, "TREE(1)                 Manuel de fsh                 TREE(1)\n\n");
+        fprintf(temp_file, "NOM\n       tree - affiche l'arborescence des répertoires et fichiers.\n\n");
+        fprintf(temp_file, "SYNOPSIS\n       tree [OPTION]... [CHEMIN]\n\n");
+        fprintf(temp_file, "-a\n    inclure les fichiers cachés\n\n");
+        fprintf(temp_file, "-d\n    afficher uniquement les répertoires\n\n");
+        fprintf(temp_file, "-L <niveau>\n    limiter l'affichage à une profondeur spécifique\n\n");
+        fprintf(temp_file, "-f\n    afficher le chemin complet\n\n");
+        fprintf(temp_file, "-h\n    afficher l'aide\n\n");
+        fprintf(temp_file, "DESCRIPTION\n       Affiche l'arborescence des répertoires et fichiers à partir du CHEMIN spécifié.\n");
     } else {
         fprintf(stderr, "fsh: man: pas de manuel pour '%s'\n", args[1]);
         fclose(temp_file);
