@@ -8,7 +8,8 @@
 #include <sys/stat.h>  
 #include <pwd.h>       
 #include <grp.h>        
-#include <time.h>     
+#include <time.h>
+#include <linux/limits.h>     
 
 // Définir les codes de couleur ANSI
 #define COLOR_RESET "\033[0m"

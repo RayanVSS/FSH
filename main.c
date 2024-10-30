@@ -18,6 +18,7 @@ int execute_cd(char **args);
 void execute_clear(); 
 int execute_man(char **args); 
 int execute_tree(int argc, char *argv[]);
+int execute_open(char **args); 
 
 int execute_external_command(char **args) {
     pid_t pid, wpid;
@@ -170,6 +171,9 @@ int main() {
                 }
                 else if (strcmp(tokens[0], "tree") == 0){
                     last_status = execute_tree(position, tokens);
+                }
+                else if (strcmp(tokens[0], "open") == 0) {
+                    last_status = execute_open(tokens);
                 }
                 else if (strcmp(tokens[0],"exit") == 0) {
                     int exit_val = (tokens[1] != NULL) ? atoi(tokens[1]) : last_status;
