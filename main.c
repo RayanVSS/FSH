@@ -7,6 +7,8 @@
 #include <readline/history.h>
 #include <limits.h>
 #include <linux/limits.h>
+#include <sys/wait.h>
+
 
 
 //Commandes ici
@@ -16,6 +18,36 @@ int execute_cd(char **args);
 void execute_clear(); 
 int execute_man(char **args); 
 
+int execute_external_command(char **args) {
+    pid_t pid, wpid;
+    int status;
+
+    pid = fork(); // Créer un processus enfant
+
+    if (pid == 0) {
+        // processus enfant
+        signal(SIGINT, SIG_DFL);
+        signal(SIGTERM, SIG_DFL);
+
+        if (execvp(args[0], args) == -1) {
+            perror("fsh");
+            exit(EXIT_FAILURE);
+        }
+    } else if (pid < 0) {       
+        perror("fsh");
+    } else {
+        //processus parent
+        do {
+            wpid = waitpid(pid, &status, WUNTRACED);
+            if (wpid == -1) {
+                perror("fsh");
+                break;
+            }
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    }
+
+    return status;
+}
 
 // Fonction pour afficher le prompt
 void afficher_prompt(int last_status, char *buffer, size_t size) {
@@ -118,34 +150,48 @@ int main() {
 
             // Vérifier si la commande est interne
             if (tokens[0] != NULL) {
-                if (strcmp(tokens[0], "ls") == 0) { // Comparer avec "ls"
-                    execute_ls(tokens);    
-                    last_status = 0;      
+                if (strcmp(tokens[0], "ls") == 0) {
+                    execute_ls(tokens);
+                    last_status = 0;
                 }
-                else if (strcmp(tokens[0], "pwd") == 0) { // Comparer avec "pwd"
-                    last_status = execute_pwd(); 
+                else if (strcmp(tokens[0], "pwd") == 0) {
+                    last_status = execute_pwd();
                 }
-                else if (strcmp(tokens[0], "cd") == 0) { // Comparer avec "cd"
-                    last_status = execute_cd(tokens); 
+                else if (strcmp(tokens[0], "cd") == 0) {
+                    last_status = execute_cd(tokens);
                 }
-                else if (strcmp(tokens[0], "clear") == 0) { // Comparer avec "clear"
-                    execute_clear(tokens); 
-                    last_status = 0;      
+                else if (strcmp(tokens[0], "clear") == 0) {
+                    execute_clear(tokens);
+                    last_status = 0;
                 }
-                else if (strcmp(tokens[0], "man") == 0) { // Comparer avec "man"
+                else if (strcmp(tokens[0], "man") == 0) {
                     last_status = execute_man(tokens);
                 }
-                else if (strcmp(tokens[0], "exit") == 0) { // Comparer avec "exit"
-                    int exit_val = (tokens[1] != NULL) ? atoi(tokens[1]) : last_status; // Obtenir le code de sortie
+                else if (strcmp(tokens[0], "exit") == 0) {
+                    int exit_val = (tokens[1] != NULL) ? atoi(tokens[1]) : last_status;
                     free(tokens);
                     free(line_copy);
                     free(ligne);
                     exit(exit_val);
                 }
+                else if (strncmp(tokens[0], "./", 2) == 0) {
+                    // Essayer d'exécuter une commande externe
+                    last_status = execute_external_command(tokens);
+
+                    // Vérifier le statut de retour et ajuster si nécessaire
+                    if (WIFEXITED(last_status)) {
+                        last_status = WEXITSTATUS(last_status);
+                    } else if (WIFSIGNALED(last_status)) {
+                        last_status = 128 + WTERMSIG(last_status);
+                    } else {
+                        last_status = 1; // Erreur générale
+                    }
+                }
                 else {
                     // Commande inconnue
                     fprintf(stdout, "fsh: commande non reconnue: %s\n", tokens[0]);
                     last_status = 1; // Mettre à jour le statut en échec
+
                 }
             }
 
@@ -157,4 +203,4 @@ int main() {
     }
 
     return last_status;
-}   
+}
