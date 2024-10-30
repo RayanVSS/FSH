@@ -119,18 +119,18 @@ int main() {
             // Vérifier si la commande est interne
             if (tokens[0] != NULL) {
                 if (strcmp(tokens[0], "ls") == 0) { // Comparer avec "ls"
-                    execute_ls(tokens);    // Appeler la fonction execute_ls
-                    last_status = 0;       // Mettre à jour le statut (supposé succès)
+                    execute_ls(tokens);    
+                    last_status = 0;      
                 }
                 else if (strcmp(tokens[0], "pwd") == 0) { // Comparer avec "pwd"
-                    last_status = execute_pwd(); // Appeler execute_pwd et mettre à jour le statut
+                    last_status = execute_pwd(); 
                 }
                 else if (strcmp(tokens[0], "cd") == 0) { // Comparer avec "cd"
-                    last_status = execute_cd(tokens); // Appeler execute_cd et mettre à jour le statut
+                    last_status = execute_cd(tokens); 
                 }
                 else if (strcmp(tokens[0], "clear") == 0) { // Comparer avec "clear"
-                    execute_clear(tokens); // Appeler execute_clear
-                    last_status = 0;       // Mettre à jour le statut
+                    execute_clear(tokens); 
+                    last_status = 0;      
                 }
                 else if (strcmp(tokens[0], "man") == 0) { // Comparer avec "man"
                     last_status = execute_man(tokens);
