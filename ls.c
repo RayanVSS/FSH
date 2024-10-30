@@ -1,4 +1,3 @@
-// ls.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -11,6 +10,17 @@
 #include <grp.h>        
 #include <time.h>     
 
+// Définir les codes de couleur ANSI
+#define COLOR_RESET "\033[0m"
+
+#define COLOR_DIR   "\033[34m" // Bleu  répertoires
+#define COLOR_EXEC  "\033[32m" // Vert exécutables
+#define COLOR_LINK  "\033[36m" // Cyan  liens symboliques
+#define COLOR_FIFO  "\033[33m" // Jaune  FIFO
+#define COLOR_SOCK  "\033[35m" // Magenta sockets
+#define COLOR_BLK   "\033[35m" // Magenta  périphériques bloc
+#define COLOR_CHR   "\033[35m" // Magenta périphériques caractère
+
 /**
  * Cette fonction liste les fichiers et répertoires dans le répertoire courant ou dans un répertoire spécifié.
  * Elle prend en charge les options suivantes :
@@ -19,7 +29,6 @@
  *
  * @param args Tableau de chaînes contenant les arguments de la commande `ls`
  */
-
 void execute_ls(char **args) {
     DIR *dir;
     struct dirent *entry;
@@ -71,8 +80,8 @@ void execute_ls(char **args) {
             snprintf(full_path, sizeof(full_path), "%s/%s", path, entry->d_name);
 
             // Obtenir les informations sur le fichier
-            if (stat(full_path, &file_stat) == -1) {
-                perror("fsh: ls: stat");
+            if (lstat(full_path, &file_stat) == -1) { // Utiliser lstat pour ne pas suivre les liens symboliques
+                perror("fsh: ls: lstat");
                 continue;
             }
 
@@ -86,6 +95,36 @@ void execute_ls(char **args) {
             else if (S_ISFIFO(file_stat.st_mode)) file_type = 'p';
             else if (S_ISSOCK(file_stat.st_mode)) file_type = 's';
             else file_type = '?';
+
+            // Déterminer la couleur basée sur le type de fichier
+            const char *color_code;
+            switch (file_type) {
+                case 'd':
+                    color_code = COLOR_DIR;
+                    break;
+                case '-':
+                    if (file_stat.st_mode & S_IXUSR)
+                        color_code = COLOR_EXEC;
+                    else
+                        color_code = COLOR_RESET;
+                    break;
+                case 'l':
+                    color_code = COLOR_LINK;
+                    break;
+                case 'p':
+                    color_code = COLOR_FIFO;
+                    break;
+                case 's':
+                    color_code = COLOR_SOCK;
+                    break;
+                case 'b':
+                case 'c':
+                    color_code = COLOR_BLK;
+                    break;
+                default:
+                    color_code = COLOR_RESET;
+                    break;
+            }
 
             // Permissions
             char permissions[10];
@@ -119,8 +158,8 @@ void execute_ls(char **args) {
             struct tm *tm_info = localtime(&file_stat.st_mtime);
             strftime(time_str, sizeof(time_str), "%b %d %H:%M", tm_info);
 
-            // Afficher les informations détaillées
-            fprintf(stdout,"%c%s %d %s %s %5ld %s %s\n",
+            // Afficher les informations détaillées avec le nom coloré
+            printf("%c%s %d %s %s %5ld %s %s%s%s\n",
                    file_type,
                    permissions,
                    links,
@@ -128,11 +167,72 @@ void execute_ls(char **args) {
                    group,
                    (long)size,
                    time_str,
-                   entry->d_name);
+                   color_code,
+                   entry->d_name,
+                   COLOR_RESET);
+
+            // Si le fichier est un lien symbolique, afficher la cible
+            if (file_type == 'l') {
+                char link_target[PATH_MAX];
+                ssize_t len = readlink(full_path, link_target, sizeof(link_target) - 1);
+                if (len != -1) {
+                    link_target[len] = '\0';
+                    printf(" -> %s%s%s\n", COLOR_RESET, link_target, COLOR_RESET);
+                }
+            }
         }
         else {
-            // Affichage simple
-            fprintf(stdout,"%s  ", entry->d_name);
+            // Déterminer le type de fichier pour la couleur
+            char full_path[PATH_MAX];
+            snprintf(full_path, sizeof(full_path), "%s/%s", path, entry->d_name);
+            if (lstat(full_path, &file_stat) == -1) { 
+                perror("fsh: ls: lstat");
+                continue;
+            }
+
+            // Déterminer le type de fichier
+            char file_type;
+            if (S_ISREG(file_stat.st_mode)) file_type = '-';
+            else if (S_ISDIR(file_stat.st_mode)) file_type = 'd';
+            else if (S_ISLNK(file_stat.st_mode)) file_type = 'l';
+            else if (S_ISCHR(file_stat.st_mode)) file_type = 'c';
+            else if (S_ISBLK(file_stat.st_mode)) file_type = 'b';
+            else if (S_ISFIFO(file_stat.st_mode)) file_type = 'p';
+            else if (S_ISSOCK(file_stat.st_mode)) file_type = 's';
+            else file_type = '?';
+
+            // Déterminer la couleur basée sur le type de fichier
+            const char *color_code;
+            switch (file_type) {
+                case 'd':
+                    color_code = COLOR_DIR;
+                    break;
+                case '-':
+                    if (file_stat.st_mode & S_IXUSR)
+                        color_code = COLOR_EXEC;
+                    else
+                        color_code = COLOR_RESET;
+                    break;
+                case 'l':
+                    color_code = COLOR_LINK;
+                    break;
+                case 'p':
+                    color_code = COLOR_FIFO;
+                    break;
+                case 's':
+                    color_code = COLOR_SOCK;
+                    break;
+                case 'b':
+                case 'c':
+                    color_code = COLOR_BLK;
+                    break;
+                default:
+                    color_code = COLOR_RESET;
+                    break;
+            }
+
+            // Affichage simple avec le nom coloré
+            printf("%s%s%s  ", color_code, entry->d_name, COLOR_RESET);
         }
     }
 
