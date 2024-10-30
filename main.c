@@ -6,24 +6,28 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <limits.h>
+#include <linux/limits.h>
 
-//mettre les commandes ici
+
+//Commandes ici
 int execute_pwd();
 void execute_ls(char **args);
 int execute_cd(char **args);
+void execute_clear(); 
+int execute_man(char **args); 
 
 
 // Fonction pour afficher le prompt
-void afficher_prompt(int last_status) {
+void afficher_prompt(int last_status, char *buffer, size_t size) {
     char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
         perror("getcwd");
         strcpy(cwd, "?");
     }
 
-    //couleur en fonction du statut
-    char *color = (last_status == 0) ? "\001\033[32m\002" : "\001\033[91m\002";
-    char *reset_color = "\001\033[00m\002";
+    // Couleur en fonction du statut
+    char *color = (last_status == 0) ? "\001\033[32m\002" : "\001\033[91m\002"; // Vert ou rouge
+    char *reset_color = "\001\033[00m\002"; // Réinitialiser la couleur
 
     // Format de la valeur de retour
     char status_str[10];
@@ -34,32 +38,35 @@ void afficher_prompt(int last_status) {
     }
 
     // Tronquer si nécessaire
-    int max_length = 30;
+    size_t max_length = 30;
     char display_cwd[PATH_MAX];
-    if (strlen(cwd) > max_length - 5) { // 5 pour "[x]..."
+    if (strlen(cwd) > (max_length - 5)) { // 5 pour "...[x]"
         snprintf(display_cwd, sizeof(display_cwd), "...%s", cwd + strlen(cwd) - (max_length - 5));
     } else {
         strncpy(display_cwd, cwd, sizeof(display_cwd));
         display_cwd[sizeof(display_cwd)-1] = '\0';
     }
 
-    // Construire le prompt
-    fprintf(stderr, "%s[%s]%s%s$ ", color, status_str, reset_color, display_cwd);
+    // Construire le prompt avec les séquences de couleur encapsulées
+    snprintf(buffer, size, "%s[%s]%s%s$ ", color, status_str, reset_color, display_cwd);
 }
 
 int main() {
     char *ligne;
     int last_status = 0;
+    char prompt[1024]; // Buffer pour le prompt
 
     // Ignorer SIGINT et SIGTERM dans le shell principal
     signal(SIGINT, SIG_IGN);
     signal(SIGTERM, SIG_IGN);
 
+    // Boucle principale du shell
     while (1) {
-        afficher_prompt(last_status);
+        // Construire le prompt
+        afficher_prompt(last_status, prompt, sizeof(prompt));
 
-        // Lire la ligne de commande avec readline
-        ligne = readline(NULL);
+        // Lire la ligne de commande avec readline en utilisant le prompt construit
+        ligne = readline(prompt);
 
         if (!ligne) { // EOF (Ctrl-D)
             printf("\n");
@@ -70,7 +77,7 @@ int main() {
         if (strlen(ligne) > 0) {
             add_history(ligne);
 
-            // Copier la ligne pour le traitement
+            // Copier la ligne pour le traitement (strtok modifie la chaîne)
             char *line_copy = strdup(ligne);
             if (!line_copy) {
                 perror("strdup");
@@ -78,9 +85,9 @@ int main() {
                 continue;
             }
 
-            // Découper la ligne en tokens
+            // Initialiser les variables pour le découpage en tokens
             int bufsize = 64, position = 0;
-            char **tokens = malloc(bufsize * sizeof(char*));
+            char **tokens = malloc(bufsize * sizeof(char*)); // Allouer un buffer pour les tokens
             if (!tokens) {
                 fprintf(stderr, "fsh: allocation error\n");
                 free(ligne);
@@ -88,14 +95,16 @@ int main() {
                 continue;
             }
 
+            // Découper la ligne en tokens séparés par des espaces
             char *token = strtok(line_copy, " ");
             while (token != NULL) {
-                tokens[position++] = token;
+                tokens[position++] = token; // Ajouter le token au tableau
 
+                // Réallouer le buffer si nécessaire
                 if (position >= bufsize) {
-                    bufsize += 64;
-                    tokens = realloc(tokens, bufsize * sizeof(char*));
-                    if (!tokens) {
+                    bufsize += 64; // Augmenter la taille du buffer
+                    tokens = realloc(tokens, bufsize * sizeof(char*)); // Réallouer
+                    if (!tokens) { // Vérifier la réallocation réussie
                         fprintf(stderr, "fsh: allocation error\n");
                         free(ligne);
                         free(line_copy);
@@ -103,28 +112,31 @@ int main() {
                     }
                 }
 
-                token = strtok(NULL, " ");
+                token = strtok(NULL, " "); // Obtenir le prochain token
             }
-            tokens[position] = NULL;
+            tokens[position] = NULL; // Terminer le tableau de tokens par NULL
 
+            // Vérifier si la commande est interne
             if (tokens[0] != NULL) {
-                //Commande "ls"
-                if (strcmp(tokens[0], "ls") == 0) {
-                    execute_ls(tokens);
-                    last_status = 0; // Supposons qu'il réussit
+                if (strcmp(tokens[0], "ls") == 0) { // Comparer avec "ls"
+                    execute_ls(tokens);    // Appeler la fonction execute_ls
+                    last_status = 0;       // Mettre à jour le statut (supposé succès)
                 }
-                //Commande "pwd"
-                else if (strcmp(tokens[0], "pwd") == 0) {
-                    last_status = execute_pwd();
+                else if (strcmp(tokens[0], "pwd") == 0) { // Comparer avec "pwd"
+                    last_status = execute_pwd(); // Appeler execute_pwd et mettre à jour le statut
                 }
-                // Commande "cd"
-                else if (strcmp(tokens[0], "cd") == 0) {
-                    last_status = execute_cd(tokens);
+                else if (strcmp(tokens[0], "cd") == 0) { // Comparer avec "cd"
+                    last_status = execute_cd(tokens); // Appeler execute_cd et mettre à jour le statut
                 }
-                
-                //pour quiter le terminal 
-                else if (strcmp(tokens[0], "exit") == 0) {
-                    int exit_val = (tokens[1] != NULL) ? atoi(tokens[1]) : last_status;
+                else if (strcmp(tokens[0], "clear") == 0) { // Comparer avec "clear"
+                    execute_clear(tokens); // Appeler execute_clear
+                    last_status = 0;       // Mettre à jour le statut
+                }
+                else if (strcmp(tokens[0], "man") == 0) { // Comparer avec "man"
+                    last_status = execute_man(tokens);
+                }
+                else if (strcmp(tokens[0], "exit") == 0) { // Comparer avec "exit"
+                    int exit_val = (tokens[1] != NULL) ? atoi(tokens[1]) : last_status; // Obtenir le code de sortie
                     free(tokens);
                     free(line_copy);
                     free(ligne);
@@ -132,8 +144,8 @@ int main() {
                 }
                 else {
                     // Commande inconnue
-                    fprintf(stderr, "fsh: commande non reconnue: %s\n", tokens[0]);
-                    last_status = 1;
+                    fprintf(stdout, "fsh: commande non reconnue: %s\n", tokens[0]);
+                    last_status = 1; // Mettre à jour le statut en échec
                 }
             }
 
@@ -145,4 +157,4 @@ int main() {
     }
 
     return last_status;
-}
+}   

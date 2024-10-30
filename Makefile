@@ -5,8 +5,8 @@ LIBS = -lreadline
 # Cible par défaut : créer l'exécutable fsh
 all: fsh
 
-fsh: main.o ls.o pwd.o cd.o
-	$(CC) $(CFLAGS) -o fsh main.o ls.o pwd.o cd.o $(LIBS)
+fsh: main.o ls.o pwd.o cd.o clear.o man.o 	
+	$(CC) $(CFLAGS) -o fsh main.o ls.o pwd.o cd.o clear.o man.o $(LIBS)
 
 main.o: main.c
 	$(CC) $(CFLAGS) -c main.c
@@ -19,6 +19,12 @@ pwd.o: pwd.c
 
 cd.o: cd.c
 	$(CC) $(CFLAGS) -c cd.c
+
+clear.o: clear.c
+	$(CC) $(CFLAGS) -c clear.c
+
+man.o: man.c
+	$(CC) $(CFLAGS) -c man.c
 
 clean:
 	rm -f *.o fsh
