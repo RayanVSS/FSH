@@ -6,7 +6,7 @@ LIBS = -lreadline
 all: fsh
 
 fsh: main.o ls.o pwd.o cd.o clear.o man.o 	
-	$(CC) $(CFLAGS) -o fsh main.o ls.o pwd.o cd.o clear.o man.o $(LIBS)
+	$(CC) $(CFLAGS) -o fsh main.o ls.o pwd.o cd.o clear.o man.o cat.o $(LIBS)
 
 main.o: main.c
 	$(CC) $(CFLAGS) -c main.c
@@ -25,6 +25,9 @@ clear.o: clear.c
 
 man.o: man.c
 	$(CC) $(CFLAGS) -c man.c
+
+cat.o: cat.c
+	$(CC) $(CFLAGS) -c cat.c
 
 clean:
 	rm -f *.o fsh
