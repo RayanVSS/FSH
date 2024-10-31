@@ -15,7 +15,7 @@ void execute_ls(char **args);
 int execute_cd(char **args);
 void execute_clear(); 
 int execute_man(char **args); 
-int execute_cat(char **args);
+int execute_cat(char **args, int x);
 
 
 // Fonction pour afficher le prompt
@@ -137,7 +137,7 @@ int main() {
                     last_status = execute_man(tokens);
                 }
                 else if(strcmp(tokens[0],"cat")==0){ // Comparer avec "cat"
-                    last_status = execute_cat(tokens); // Appeler execute_cat et mettre à jour le statut
+                    last_status = execute_cat(tokens,1); // Appeler execute_cat et mettre à jour le statut
                 }
                 else if (strcmp(tokens[0], "exit") == 0) { // Comparer avec "exit"
                     int exit_val = (tokens[1] != NULL) ? atoi(tokens[1]) : last_status; // Obtenir le code de sortie
