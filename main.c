@@ -91,6 +91,37 @@ void afficher_prompt(int last_status, char *buffer, size_t size) {
     snprintf(buffer, size, "%s[%s]%s%s$ ", color, status_str, reset_color, display_cwd);
 }
 
+// complétion pour readline
+char *init_completion(const char *text, int state) {
+    static int list_index, len;
+    const char *name;
+
+    if (!state) { // l'index de recherche et long
+        list_index = 0;
+        len = strlen(text);
+    }
+
+    // trouver une correspondance
+    while ((name = internal_commands[list_index++])) {
+        if (strncmp(name, text, len) == 0) {
+            return strdup(name);
+        }
+    }
+    return NULL;
+}
+
+//  liste pour readline
+char **completion(const char *text, int start, int end) {
+    (void)end; //pour le Warn
+    // commandes internes
+    if (start == 0) {
+        return rl_completion_matches(text, init_completion);
+    } else {
+        // les fichiers
+        return rl_completion_matches(text, rl_filename_completion_function);
+    }
+}
+
 
 int execute_history() {
     HIST_ENTRY **the_list;
@@ -116,6 +147,8 @@ int main() {
     // Ignorer SIGINT et SIGTERM dans le shell principal
     signal(SIGINT, SIG_IGN);
     signal(SIGTERM, SIG_IGN);
+
+    rl_attempted_completion_function = completion; // pour Tab
 
     // Boucle principale du shell
     while (1) {
