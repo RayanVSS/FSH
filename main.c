@@ -10,6 +10,9 @@
 #include <sys/wait.h>
 
 
+const char *internal_commands[] = {
+    "ls", "pwd", "cd", "clear", "man", "tree", "open", "history", "exit", "compgen", NULL
+};
 
 //Commandes ici
 int execute_pwd();
@@ -20,7 +23,7 @@ int execute_man(char **args);
 int execute_tree(int argc, char *argv[]);
 int execute_open(char **args); 
 int execute_history();
-int execute_compgen(int argc, char **argv);
+int execute_compgen(const char *internal_commands[], int argc, char **argv);
 
 
 int execute_external_command(char **args) {
@@ -199,7 +202,7 @@ int main() {
                     last_status = execute_history();
                 }
                 else if (strcmp(tokens[0], "compgen") == 0) {
-                    last_status = execute_compgen(position, tokens);
+                    last_status = execute_compgen(internal_commands,position, tokens);
                 }
                 else if (strcmp(tokens[0],"exit") == 0) {
                     int exit_val = (tokens[1] != NULL) ? atoi(tokens[1]) : last_status;

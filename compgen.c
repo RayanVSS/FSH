@@ -15,25 +15,21 @@ int is_executable(const char *path) {
 }
 
 // commandes internes
-void list_internal_commands() {
-    const char *internal_commands[] = {
-        "ls", "pwd", "cd", "clear", "man", "tree", "open", "history", "exit", "compgen", NULL
-    };
-
+void list_internal_commands(char *internal_commands[]) {
     for (int i = 0; internal_commands[i] != NULL; i++) {
         printf("%s\n", internal_commands[i]);
     }
 }
 
 
-int execute_compgen(int argc, char **argv) {
+int execute_compgen(char *internal_commands[],int argc, char **argv) {
     // les arguments
     if (argc < 2) {
         fprintf(stderr, "Usage: compgen -c\n");
         return 1;
     }
     if (strcmp(argv[1], "-c") == 0) {
-        list_internal_commands();
+        list_internal_commands(internal_commands);
     } else {
         fprintf(stderr, "compgen: option inconnue: %s\n", argv[1]);
         return 1;
