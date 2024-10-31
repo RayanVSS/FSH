@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int execute_cat(char *args) {
-
-    FILE *file = fopen(args[1], "r");   //Ouvrir le fichier en mode lecture
+int execute_cat(char **args) {
+    FILE *file = fopen(args[1], "r");  //Ouvrir le fichier en mode lecture
     if (file == NULL) { //Vérifier si le fichier est ouvert
         fprintf(stderr,"Erreur lors de l'ouverture du fichier \n");
         return 1;

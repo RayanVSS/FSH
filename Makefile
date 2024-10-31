@@ -5,7 +5,7 @@ LIBS = -lreadline
 # Cible par défaut : créer l'exécutable fsh
 all: fsh
 
-fsh: main.o ls.o pwd.o cd.o clear.o man.o 	
+fsh: main.o ls.o pwd.o cd.o clear.o man.o cat.o
 	$(CC) $(CFLAGS) -o fsh main.o ls.o pwd.o cd.o clear.o man.o cat.o $(LIBS)
 
 main.o: main.c
