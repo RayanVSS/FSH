@@ -11,7 +11,7 @@
 
 
 const char *internal_commands[] = {
-    "ls", "pwd", "cd", "clear", "man", "tree", "open", "history", "exit", "compgen", NULL
+    "ls", "pwd", "cd", "clear", "man", "tree", "open", "history", "exit", "compgen","myedit", NULL
 };
 
 //Commandes ici
@@ -24,6 +24,7 @@ int execute_tree(int argc, char *argv[]);
 int execute_open(char **args); 
 int execute_history();
 int execute_compgen(const char *internal_commands[], int argc, char **argv);
+int execute_my_editor(char **args);
 
 
 int execute_external_command(char **args) {
@@ -237,6 +238,9 @@ int main() {
                 else if (strcmp(tokens[0], "compgen") == 0) {
                     last_status = execute_compgen(internal_commands,position, tokens);
                 }
+                else if (strcmp(tokens[0], "myedit") == 0) {
+                    last_status = execute_my_editor(tokens  );
+                }   
                 else if (strcmp(tokens[0],"exit") == 0) {
                     int exit_val = (tokens[1] != NULL) ? atoi(tokens[1]) : last_status;
                     free(tokens);
