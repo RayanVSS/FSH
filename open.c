@@ -9,16 +9,16 @@
 #include <sys/stat.h>
 #include <ctype.h>
 
-// Structure pour la correspondance extension/application
 typedef struct {
     char *extension;
     char *application;
 } ExtensionAppMap;
 
-// Tableau de correspondance (peut être étendu)
+// tableau de correspondance
 ExtensionAppMap mappings[] = {
     { ".txt", "gnome-text-editor" },
     { ".c", "gnome-text-editor" },
+    {".py", "gnome-text-editor"},
     { ".md", "gnome-text-editor" },
     { ".sh", "gnome-terminal" },
     { ".pdf", "evince" },
@@ -34,7 +34,6 @@ ExtensionAppMap mappings[] = {
     { ".xlsx", "libreoffice" },
     { ".ppt", "libreoffice" },
     { ".pptx", "libreoffice" },
-    // Ajouter d'autres correspondances selon vos besoins
     { NULL, NULL } // Marqueur de fin
 };
 
@@ -45,18 +44,17 @@ ExtensionAppMap mappings[] = {
  * @return char* Nom de l'application ou NULL si non trouvé.
  */
 char* get_application_for_file(const char *filename) {
-    // Trouver le dernier point dans le nom de fichier
+    // dernier point dans le nom de fichier
     const char *dot = strrchr(filename, '.');
-    if (!dot || dot == filename) return NULL; // Pas d'extension trouvée
-
-    // Parcourir le tableau de correspondance
+    if (!dot || dot == filename) return NULL; // Pas d'extension
+    // Parcourir le tableau
     for (int i = 0; mappings[i].extension != NULL; i++) {
         if (strcasecmp(dot, mappings[i].extension) == 0) {
             return mappings[i].application;
         }
     }
 
-    return NULL; // Aucune correspondance trouvée
+    return NULL; // Aucune correspondance trouvee
 }
 
 /**
@@ -93,13 +91,19 @@ int execute_open(char **args) {
 
         printf("fsh: open: Traitement de '%s'\n", path);
 
-        // Vérifier si le fichier ou répertoire existe
+        // si c'est une URL
+        if (is_url(path)) {
+            app = "gnome-www-browser"; // Navigateur par défaut
+            printf("fsh: open: '%s' est une URL. Application choisie: %s\n", path, app);
+        }
+        else{   
+        //fichier ou répertoire existe
         if (access(path, F_OK) != 0) {
             perror("fsh: open: accès au fichier");
             continue;
         }
 
-        // Utiliser stat pour déterminer si c'est un répertoire
+        // si c'est un répertoire
         struct stat path_stat;
         if (stat(path, &path_stat) == -1) {
             perror("fsh: open: stat");
@@ -107,12 +111,12 @@ int execute_open(char **args) {
         }
 
         if (S_ISDIR(path_stat.st_mode)) {
-            // C'est un répertoire, utiliser Nautilus
+            // c'est un répertoire
             app = "nautilus";
             printf("fsh: open: '%s' est un répertoire. Application choisie: %s\n", path, app);
         }
         else {
-            // C'est un fichier, obtenir l'application associée
+            // obtenir l'application associée
             app = get_application_for_file(path);
             if (app != NULL) {
                 printf("fsh: open: Extension trouvée pour '%s'. Application choisie: %s\n", path, app);
@@ -122,19 +126,18 @@ int execute_open(char **args) {
                 continue;
             }
         }
+        }
 
-        // Fork pour exécuter l'application
+        // fork pour exécuter 
         pid_t pid = fork();
 
         if (pid < 0) {
-            // Erreur lors du fork
             perror("fsh: open: fork");
             continue;
         }
 
         if (pid == 0) {
             // Processus enfant
-            // Réactiver les signaux par défaut
             signal(SIGINT, SIG_DFL);
             signal(SIGTERM, SIG_DFL);
 
@@ -154,7 +157,6 @@ int execute_open(char **args) {
         }
         else {
             // Processus parent
-            // Ne pas attendre que le processus enfant se termine pour ne pas bloquer le shell
             printf("fsh: open: processus %d lancé pour ouvrir '%s'\n", pid, path);
         }
     }
