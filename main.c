@@ -19,6 +19,7 @@ void execute_clear();
 int execute_man(char **args); 
 int execute_tree(int argc, char *argv[]);
 int execute_open(char **args); 
+int execute_history();
 
 int execute_external_command(char **args) {
     pid_t pid, wpid;
@@ -84,6 +85,23 @@ void afficher_prompt(int last_status, char *buffer, size_t size) {
     // Construire le prompt avec les séquences de couleur encapsulées
     snprintf(buffer, size, "%s[%s]%s%s$ ", color, status_str, reset_color, display_cwd);
 }
+
+
+int execute_history() {
+    HIST_ENTRY **the_list;
+    int i = 0;
+    the_list = history_list(); //  liste de historique
+    if (the_list && the_list[i+1] != NULL ) {
+        for (i = 0; the_list[i+1]; i++) {
+            printf("%d  %s\n", i + history_base, the_list[i]->line);
+        }
+    } else {
+        printf("Aucune commande dans l'historique.\n");
+        return 1;
+    }
+    return 0; // Retourne 0 pour indiquer un succès
+}
+
 
 int main() {
     char *ligne;
@@ -174,6 +192,9 @@ int main() {
                 }
                 else if (strcmp(tokens[0], "open") == 0) {
                     last_status = execute_open(tokens);
+                }
+                else if (strcmp(tokens[0], "history") == 0) {
+                    last_status = execute_history();
                 }
                 else if (strcmp(tokens[0],"exit") == 0) {
                     int exit_val = (tokens[1] != NULL) ? atoi(tokens[1]) : last_status;
