@@ -1,8 +1,10 @@
-
-#include <stdio.h>       
-#include <unistd.h>     
-#include <limits.h>      
+#include <stdio.h>
+#include <unistd.h>
+#include <limits.h>
+#include <string.h>
+#include <errno.h>
 #include <linux/limits.h>
+
 
 /**
  * Cette fonction affiche le répertoire de travail courant absolu.
@@ -14,10 +16,11 @@ int execute_pwd() {
 
     // Obtenir le répertoire de travail actuel
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
-        fprintf(stdout,"%s\n", cwd); // Afficher le répertoire courant
+        write(STDOUT_FILENO, cwd, strlen(cwd));
+        write(STDOUT_FILENO, "\n", 1);
         return 0;            
     } else {
-        perror("pwd");       // Afficher une erreur si échoue
+        perror("fsh: pwd");
         return 1;            
     }
 }
