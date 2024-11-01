@@ -1,6 +1,6 @@
 CC = gcc                   
 CFLAGS = -Wall -Wextra -g    
-LIBS = -lreadline
+LIBS = -lreadline -lncurses
 
 # Cible par défaut : créer l'exécutable fsh
 all: fsh
