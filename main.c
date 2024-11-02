@@ -7,15 +7,19 @@
 #include <readline/history.h>
 #include <limits.h>
 #include <linux/limits.h>
+#include <sys/stat.h>
 
 
 //Commandes ici
 int execute_pwd();
-void execute_ls(char **args);
-int execute_cd(char **args);
+void execute_ls(char **args,int *pos);
+int execute_cd(char **args, int *pos);
 void execute_clear(); 
 int execute_man(char **args); 
-int execute_cat(char **args, int x);
+int execute_cat(char **args, int *pos);
+int execute_redirection(char **args, int *pos);
+int execute_executable(char **args, int *pos);
+
 
 
 // Fonction pour afficher le prompt
@@ -117,39 +121,68 @@ int main() {
             }
             tokens[position] = NULL; // Terminer le tableau de tokens par NULL
 
-            // Vérifier si la commande est interne
-            if (tokens[0] != NULL) {
-                if (strcmp(tokens[0], "ls") == 0) { // Comparer avec "ls"
-                    execute_ls(tokens);    // Appeler la fonction execute_ls
+            // Ajouter un pointeur pour la position dans les tokens
+            int * pos = malloc(sizeof(int));
+            if(pos==NULL){
+                fprintf(stderr,"Erreur d'allocation de mémoire\n");
+                free(tokens);
+                free(line_copy);
+                free(ligne);
+                return 1;
+            }
+            *pos = 0;
+
+            // Exécuter les commandes
+            // Boucle pour traiter les tokens
+            while (tokens[*pos]!=NULL){
+                // Vérifier si la commande est interne
+                if (strcmp(tokens[*pos], "ls") == 0) { // Comparer avec "ls"
+                    *pos=*pos+1;
+                    execute_ls(tokens,pos);    // Appeler la fonction execute_ls
                     last_status = 0;       // Mettre à jour le statut (supposé succès)
                 }
-                else if (strcmp(tokens[0], "pwd") == 0) { // Comparer avec "pwd"
+                else if (strcmp(tokens[*pos], "pwd") == 0) { // Comparer avec "pwd"
+                    *pos=*pos+1;
                     last_status = execute_pwd(); // Appeler execute_pwd et mettre à jour le statut
                 }
-                else if (strcmp(tokens[0], "cd") == 0) { // Comparer avec "cd"
-                    last_status = execute_cd(tokens); // Appeler execute_cd et mettre à jour le statut
+                else if (strcmp(tokens[*pos], "cd") == 0) { // Comparer avec "cd"
+                    *pos=*pos+1;
+                    last_status = execute_cd(tokens,pos); // Appeler execute_cd et mettre à jour le statut
                 }
-                else if (strcmp(tokens[0], "clear") == 0) { // Comparer avec "clear"
+                else if (strcmp(tokens[*pos], "clear") == 0) { // Comparer avec "clear"
+                    *pos=*pos+1;
                     execute_clear(tokens); // Appeler execute_clear
                     last_status = 0;       // Mettre à jour le statut
                 }
-                else if (strcmp(tokens[0], "man") == 0) { // Comparer avec "man"
+                else if (strcmp(tokens[*pos], "man") == 0) { // Comparer avec "man"
+                    *pos=*pos+1;
                     last_status = execute_man(tokens);
                 }
-                else if(strcmp(tokens[0],"cat")==0){ // Comparer avec "cat"
-                    last_status = execute_cat(tokens,1); // Appeler execute_cat et mettre à jour le statut
+                else if(strcmp(tokens[*pos],"cat")==0){ // Comparer avec "cat"
+                    *pos=*pos+1;
+                    last_status = execute_cat(tokens,pos); // Appeler execute_cat et mettre à jour le statut
                 }
-                else if (strcmp(tokens[0], "exit") == 0) { // Comparer avec "exit"
-                    int exit_val = (tokens[1] != NULL) ? atoi(tokens[1]) : last_status; // Obtenir le code de sortie
+                else if (strcmp(tokens[*pos], "exit") == 0) { // Comparer avec "exit"
+                    *pos=*pos+1;
+                    int exit_val = (tokens[*pos] != NULL) ? atoi(tokens[*pos]) : last_status; // Obtenir le code de sortie
                     free(tokens);
                     free(line_copy);
                     free(ligne);
                     exit(exit_val);
+                    break; 
+                }
+                else if (strcmp(tokens[*pos],"&&")==0){
+                    *pos=*pos+1;
+                    if(last_status!=0){
+                       break;
+                    }
+                }
+                else if (strcmp(tokens[*pos],";")==0){
+                    *pos=*pos+1;
                 }
                 else {
-                    // Commande inconnue
-                    fprintf(stdout, "fsh: commande non reconnue: %s\n", tokens[0]);
-                    last_status = 1; // Mettre à jour le statut en échec
+                     *pos=*pos+1;
+                    last_status = execute_executable(tokens,pos);
                 }
             }
 
