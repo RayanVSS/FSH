@@ -11,17 +11,19 @@
 
 
 const char *internal_commands[] = {
-    "ls", "pwd", "cd", "clear", "history", "exit", "compgen", NULL
+     "pwd", "cd", "clear", "history", "exit", "compgen","kill", NULL
 };
 
 //Commandes ici
 int execute_pwd();
-void execute_ls(char **args);
 int execute_cd(char **args);
 void execute_clear(); 
 int execute_history();
 int execute_compgen(const char *internal_commands[], int argc, char **argv);
+int execute_kill(pid_t pid, int signal);
 
+
+// void execute_ls(char **args);
 // int execute_man(char **args); 
 // int execute_tree(int argc, char *argv[]);
 // int execute_open(char **args); 
@@ -210,11 +212,7 @@ int main() {
 
             // Vérifier si la commande est interne
             if (tokens[0] != NULL) {
-                if (strcmp(tokens[0], "ls") == 0) {
-                    execute_ls(tokens);
-                    last_status = 0;
-                }
-                else if (strcmp(tokens[0], "pwd") == 0) {
+                if (strcmp(tokens[0], "pwd") == 0) {
                     last_status = execute_pwd();
                 }
                 else if (strcmp(tokens[0], "cd") == 0) {
@@ -230,6 +228,16 @@ int main() {
                 else if (strcmp(tokens[0], "compgen") == 0) {
                     last_status = execute_compgen(internal_commands,position, tokens);
                 }  
+                else if (strcmp(tokens[0], "kill") == 0) {
+                    if (tokens[1] == NULL) {
+                        write(STDERR_FILENO, "fsh: kill: manque l'argument du PID\n", 36);
+                        last_status = 1;
+                    } else {
+                        pid_t pid = atoi(tokens[1]);
+                        int signal = (tokens[2] != NULL) ? atoi(tokens[2]) : SIGTERM;
+                        last_status = execute_kill(pid, signal);
+                    }
+                }
                 else if (strcmp(tokens[0],"exit") == 0) {
                     int exit_val = (tokens[1] != NULL) ? atoi(tokens[1]) : last_status;
                     free(tokens);
