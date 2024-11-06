@@ -181,7 +181,7 @@ int main() {
                     *pos=*pos+1;
                 }
                 else {
-                     *pos=*pos+1;
+                    *pos=*pos+1;
                     last_status = execute_executable(tokens,pos);
                 }
             }

@@ -11,6 +11,13 @@
 
 struct stat *path_stat;
 
+char *concat(char *s1, char *s2){
+    char *result = malloc(strlen(s1)+strlen(s2)+1);
+    strcpy(result, s1);
+    strcat(result, s2);
+    return result;
+}
+
 int verif(char *arg){
     char l=arg[0];
     if(l=='<' || l=='>' || l=='|' || l=='&' || l==';'  || l=='{' || l=='}' || l=='$' ||( l=='2' && arg[1]=='>')){
@@ -37,14 +44,13 @@ int nb_arguments(char **args, int *pos) {
 int executer(char **args,char *path_commande, int *pos,struct stat path_stat,int nb){
     if(stat(path_commande,&path_stat)==0){//Si le fichier existe dans le répertoire courant
         if(path_stat.st_mode & S_IXUSR){//Si le fichier est exécutable
-            char *commande = path_commande;
             char *arguments[nb+2];
-            arguments[0] = commande;
-            for(int i=1; i<nb-1; i++){//Ajouter les arguments
-                arguments[i] = args[*pos];
-                *pos = *pos + 1;
+            arguments[0] = path_commande;
+            for(int i=1; i<=nb; i++){//Ajouter les arguments
+                arguments[i] = args[*pos+i-1];
             }
-            arguments[nb_arguments(args, pos)+1] = NULL;
+            *pos = *pos + nb;
+            arguments[nb+1] = NULL;
 
             pid_t new_processus=fork();//On cree un processus fils pour exécuter le programme
             if(new_processus==-1){
@@ -53,14 +59,12 @@ int executer(char **args,char *path_commande, int *pos,struct stat path_stat,int
             }
 
             if(new_processus==0){
-                int error = execvp(commande, arguments);//On execute le programme
-                if (error == -1) {
-                    fprintf(stderr, "Erreur lors de l'exécution du programme\n");
-                    return 1;
-                }
+                int erreur =execvp(path_commande, arguments);//On execute le programme
+                perror("execvp");
+                return erreur ;exit(1);
             }
             else{
-                wait(NULL);//On attend la fin de l'exécution du programme
+                wait(NULL);
             }
             return 0;
         }
@@ -70,7 +74,9 @@ int executer(char **args,char *path_commande, int *pos,struct stat path_stat,int
             return 1;
         }
     }
-    return -1;
+    else {
+        return -1;
+    }
 }
 
 
@@ -83,7 +89,10 @@ int execute_executable(char **args, int *pos) {
         return verif_execute;
     }
     else{ //Si le fichier n'existe pas dans le répertoire courant ,c'est surement une commande externe 
-        char *p= strtok(getenv("PATH"), ":");//On récupère le PATH
+        char *source = getenv("PATH");
+        char *p= malloc(strlen(source)+1);
+        strcpy(p,source);
+        strtok(p, ":");
         char **PATH = malloc(100*sizeof(char*));
         int i = 0;
         while(p != NULL){
@@ -93,12 +102,9 @@ int execute_executable(char **args, int *pos) {
         PATH[i] = NULL;
         i = 0;
         while (PATH[i] != NULL) {//On parcourt le PATH
-            char *path_commande = PATH[i];
-            strcat(path_commande, "/");
-            strcat(path_commande, args[*pos-1]);
-            fprintf(stdout, "%s\n", path_commande);
+            char *path_commande = concat(concat(PATH[i], "/"), args[*pos-1]);
             verif_execute = executer(args,path_commande, pos, path_stat, nb);
-            if (verif_execute==0 || verif_execute==1){
+            if (verif_execute>=0){
                 free(path_commande);
                 free(PATH);
                 free(p);
@@ -110,8 +116,10 @@ int execute_executable(char **args, int *pos) {
             fprintf(stdout, "fsh: commande introuvable: %s\n", args[*pos-1]);
             *pos = *pos + nb;
             free(PATH);
+            free(p);
             return 1;
         }
     }
+
     return 0;
 }
