@@ -20,16 +20,15 @@
  * @param args Tableau de chaînes contenant les arguments de la commande `ls`
  */
 
-void execute_ls(char **args) {
+void execute_ls(char **args,int *pos) {
     DIR *dir;
     struct dirent *entry;
     struct stat file_stat;
     char *path = "."; // Par défaut, répertoire courant
     int long_format = 0;
     int show_all = 0;
-
     // Parcourir les arguments pour détecter les options et le chemin
-    for (int i = 1; args[i] != NULL; i++) {
+    for (int i = *pos; args[i] != NULL; i++) {
         if (args[i][0] == '-') {
             // Parcourir les options après le '-'
             for (size_t j = 1; j < strlen(args[i]); j++) {
@@ -44,10 +43,12 @@ void execute_ls(char **args) {
                     return;
                 }
             }
+            *pos = *pos + 1; 
         }
         else {
             // Si l'argument ne commence pas par '-', c'est un chemin
             path = args[i];
+            *pos = *pos + 1;
         }
     }
 
