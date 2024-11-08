@@ -48,6 +48,7 @@ int execute_cd(char **args, int *pos) {
             return 1;
         }
         target = previous_dir;
+        *pos = *pos + 1;
         printf("%s\n", target); // Afficher le répertoire précédent
     }
     else {
