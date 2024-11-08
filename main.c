@@ -7,7 +7,9 @@
 #include <readline/history.h>
 #include <limits.h>
 #include <linux/limits.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 
 const char *internal_commands[] = {
@@ -16,19 +18,18 @@ const char *internal_commands[] = {
 
 //Commandes ici
 int execute_pwd();
-int execute_cd(char **args);
+// void execute_ls(char **args,int *pos);
+int execute_cd(char **args, int *pos);
 void execute_clear(); 
+// int execute_man(char **args); 
+// int execute_cat(char **args, int *pos);
+int execute_redirection(char **args, int *pos);
+int execute_executable(char **args, int *pos);
 int execute_history();
 int execute_compgen(const char *internal_commands[], int argc, char **argv);
 int execute_kill(pid_t pid, int signal);
 
-
-// void execute_ls(char **args);
-// int execute_man(char **args); 
-// int execute_tree(int argc, char *argv[]);
-// int execute_open(char **args); 
-// int execute_my_editor(char **args);
-
+/*
 
 int execute_external_command(char **args) {
     pid_t pid, wpid;
@@ -60,6 +61,9 @@ int execute_external_command(char **args) {
 
     return status;
 }
+
+*/
+
 
 // Fonction pour afficher le prompt
 void afficher_prompt(int last_status, char *buffer, size_t size) {
@@ -94,6 +98,7 @@ void afficher_prompt(int last_status, char *buffer, size_t size) {
     // Construire le prompt avec les séquences de couleur encapsulées
     snprintf(buffer, size, "%s[%s]%s%s$ ", color, status_str, reset_color, display_cwd);
 }
+
 
 // complétion pour readline
 char *init_completion(const char *text, int state) {
@@ -141,7 +146,6 @@ int execute_history() {
     }
     return 0; // Retourne 0 pour indiquer un succès
 }
-
 
 int main() {
     char *ligne;
@@ -210,41 +214,75 @@ int main() {
             }
             tokens[position] = NULL; // Terminer le tableau de tokens par NULL
 
-            // Vérifier si la commande est interne
-            if (tokens[0] != NULL) {
-                if (strcmp(tokens[0], "pwd") == 0) {
-                    last_status = execute_pwd();
+            // Ajouter un pointeur pour la position dans les tokens
+            int * pos = malloc(sizeof(int));
+            if(pos==NULL){
+                fprintf(stderr,"Erreur d'allocation de mémoire\n");
+                free(tokens);
+                free(line_copy);
+                free(ligne);
+                return 1;
+            }
+            *pos = 0;
+
+            // Exécuter les commandes
+            // Boucle pour traiter les tokens
+            while (tokens[*pos]!=NULL){
+                // Vérifier si la commande est interne
+               if (strcmp(tokens[*pos], "pwd") == 0) { // Comparer avec "pwd"
+                    *pos=*pos+1;
+                    last_status = execute_pwd(); // Appeler execute_pwd et mettre à jour le statut
                 }
-                else if (strcmp(tokens[0], "cd") == 0) {
-                    last_status = execute_cd(tokens);
+                else if (strcmp(tokens[*pos], "cd") == 0) { // Comparer avec "cd"
+                    *pos=*pos+1;
+                    last_status = execute_cd(tokens,pos); // Appeler execute_cd et mettre à jour le statut
                 }
-                else if (strcmp(tokens[0], "clear") == 0) {
-                    execute_clear(tokens);
-                    last_status = 0;
+                else if (strcmp(tokens[*pos], "clear") == 0) { // Comparer avec "clear"
+                    *pos=*pos+1;
+                    execute_clear(tokens); // Appeler execute_clear
+                    last_status = 0;       // Mettre à jour le statut
                 }
-                else if (strcmp(tokens[0], "history") == 0) {
-                    last_status = execute_history();
-                }
-                else if (strcmp(tokens[0], "compgen") == 0) {
-                    last_status = execute_compgen(internal_commands,position, tokens);
-                }  
-                else if (strcmp(tokens[0], "kill") == 0) {
-                    if (tokens[1] == NULL) {
-                        write(STDERR_FILENO, "fsh: kill: manque l'argument du PID\n", 36);
-                        last_status = 1;
-                    } else {
-                        pid_t pid = atoi(tokens[1]);
-                        int signal = (tokens[2] != NULL) ? atoi(tokens[2]) : SIGTERM;
-                        last_status = execute_kill(pid, signal);
-                    }
-                }
-                else if (strcmp(tokens[0],"exit") == 0) {
-                    int exit_val = (tokens[1] != NULL) ? atoi(tokens[1]) : last_status;
+                else if (strcmp(tokens[*pos], "exit") == 0) { // Comparer avec "exit"
+                    *pos=*pos+1;
+                    int exit_val = (tokens[*pos] != NULL) ? atoi(tokens[*pos]) : last_status; // Obtenir le code de sortie
                     free(tokens);
                     free(line_copy);
                     free(ligne);
                     exit(exit_val);
+                    break; 
                 }
+                else if (strcmp(tokens[*pos],"&&")==0){
+                    *pos=*pos+1;
+                    if(last_status!=0){
+                       break;
+                    }
+                }
+                else if (strcmp(tokens[*pos],";")==0){
+                    *pos=*pos+1;
+                }
+                else {
+                    *pos=*pos+1;
+                    last_status = execute_executable(tokens,pos);
+                }
+            }
+
+            free(tokens);
+            free(line_copy);
+        }
+
+        free(ligne);
+    }
+
+    return last_status;
+
+    /*
+                    else if (strcmp(tokens[0], "kill") == 0) {
+                    if (tokens[1] == NULL) {
+                        write(STDERR_FILENO, "fsh: kill: manque l'argument du PID\n", 36);
+                        last_status = 1;
+    */
+
+/*
                 else if (strncmp(tokens[0], "./", 2) == 0) {
                     // Essayer d'exécuter une commande externe
                     last_status = execute_external_command(tokens);
@@ -271,13 +309,9 @@ int main() {
                     last_status = 1; // Erreur générale
                 }
                 }
-            }
-            free(tokens);
-            free(line_copy);
-        }
 
-        free(ligne);
-    }
 
-    return last_status;
-}
+
+*/
+
+}   

@@ -5,8 +5,9 @@ LIBS = -lreadline -lncurses
 # Cible par défaut : créer l'exécutable fsh
 all: fsh
 
-fsh: main.o  pwd.o cd.o clear.o compgen.o kill.o
-	$(CC) $(CFLAGS) -o fsh main.o  pwd.o cd.o clear.o compgen.o kill.o $(LIBS)
+fsh: main.o  pwd.o cd.o clear.o  echo.o ftype.o touch.o executable.o compgen.o kill.o
+	$(CC) $(CFLAGS) -o fsh main.o pwd.o cd.o clear.o echo.o ftype.o touch.o executable.o compgen.o kill.o $(LIBS)
+
 
 main.o: main.c
 	$(CC) $(CFLAGS) -c main.c
@@ -26,6 +27,18 @@ clear.o: clear.c
 man.o: man.c
 	$(CC) $(CFLAGS) -c man.c
 
+echo.o: echo.c
+	$(CC) $(CFLAGS) -c echo.c
+
+ftype.o: ftype.c
+	$(CC) $(CFLAGS) -c ftype.c
+
+touch.o: touch.c  # Ajout de la règle pour compiler touch.c
+	$(CC) $(CFLAGS) -c touch.c  # Compilation de touch.c
+
+executable.o: 
+	$(CC) $(CFLAGS) -c executable.c
+ 
 tree.o: tree.c
 	$(CC) $(CFLAGS) -c tree.c
 	
