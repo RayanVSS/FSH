@@ -2,7 +2,8 @@
 #include <unistd.h>      
 #include <string.h>      
 #include <stdlib.h>      
-#include <limits.h>      
+#include <limits.h>   
+#include <linux/limits.h>     
 
 // Variable globale pour stocker le répertoire précédent
 static char previous_dir[PATH_MAX] = "";
