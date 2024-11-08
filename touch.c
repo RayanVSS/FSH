@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 /**
  * Fonction execute_touch : crée un fichier si celui-ci n'existe pas.
