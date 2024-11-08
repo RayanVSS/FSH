@@ -7,14 +7,62 @@
 #include <readline/history.h>
 #include <limits.h>
 #include <linux/limits.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 
+
+const char *internal_commands[] = {
+     "pwd", "cd", "clear", "history", "exit", "compgen","kill", NULL
+};
 
 //Commandes ici
 int execute_pwd();
-void execute_ls(char **args);
-int execute_cd(char **args);
+// void execute_ls(char **args,int *pos);
+int execute_cd(char **args, int *pos);
 void execute_clear(); 
-int execute_man(char **args); 
+// int execute_man(char **args); 
+// int execute_cat(char **args, int *pos);
+int execute_redirection(char **args, int *pos);
+int execute_executable(char **args, int *pos);
+int execute_history();
+int execute_compgen(const char *internal_commands[], int argc, char **argv);
+int execute_kill(pid_t pid, int signal);
+
+/*
+
+int execute_external_command(char **args) {
+    pid_t pid, wpid;
+    int status;
+
+    pid = fork(); // Créer un processus enfant
+
+    if (pid == 0) {
+        // processus enfant
+        signal(SIGINT, SIG_DFL);
+        signal(SIGTERM, SIG_DFL);
+
+        if (execvp(args[0], args) == -1) {
+            perror("fsh");
+            exit(EXIT_FAILURE);
+        }
+    } else if (pid < 0) {       
+        perror("fsh");
+    } else {
+        //processus parent
+        do {
+            wpid = waitpid(pid, &status, WUNTRACED);
+            if (wpid == -1) {
+                perror("fsh");
+                break;
+            }
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    }
+
+    return status;
+}
+
+*/
 
 
 // Fonction pour afficher le prompt
@@ -51,6 +99,54 @@ void afficher_prompt(int last_status, char *buffer, size_t size) {
     snprintf(buffer, size, "%s[%s]%s%s$ ", color, status_str, reset_color, display_cwd);
 }
 
+
+// complétion pour readline
+char *init_completion(const char *text, int state) {
+    static int list_index, len;
+    const char *name;
+
+    if (!state) { // l'index de recherche et long
+        list_index = 0;
+        len = strlen(text);
+    }
+
+    // trouver une correspondance
+    while ((name = internal_commands[list_index++])) {
+        if (strncmp(name, text, len) == 0) {
+            return strdup(name);
+        }
+    }
+    return NULL;
+}
+
+//  liste pour readline
+char **completion(const char *text, int start, int end) {
+    (void)end; //pour le Warn
+    // commandes internes
+    if (start == 0) {
+        return rl_completion_matches(text, init_completion);
+    } else {
+        // les fichiers
+        return rl_completion_matches(text, rl_filename_completion_function);
+    }
+}
+
+
+int execute_history() {
+    HIST_ENTRY **the_list;
+    int i = 0;
+    the_list = history_list(); //  liste de historique
+    if (the_list && the_list[i+1] != NULL ) {
+        for (i = 0; the_list[i+1]; i++) {
+            printf("%d  %s\n", i + history_base, the_list[i]->line);
+        }
+    } else {
+        printf("Aucune commande dans l'historique.\n");
+        return 1;
+    }
+    return 0; // Retourne 0 pour indiquer un succès
+}
+
 int main() {
     char *ligne;
     int last_status = 0;
@@ -59,6 +155,8 @@ int main() {
     // Ignorer SIGINT et SIGTERM dans le shell principal
     signal(SIGINT, SIG_IGN);
     signal(SIGTERM, SIG_IGN);
+
+    rl_attempted_completion_function = completion; // pour Tab
 
     // Boucle principale du shell
     while (1) {
@@ -116,36 +214,55 @@ int main() {
             }
             tokens[position] = NULL; // Terminer le tableau de tokens par NULL
 
-            // Vérifier si la commande est interne
-            if (tokens[0] != NULL) {
-                if (strcmp(tokens[0], "ls") == 0) { // Comparer avec "ls"
-                    execute_ls(tokens);    // Appeler la fonction execute_ls
-                    last_status = 0;       // Mettre à jour le statut (supposé succès)
-                }
-                else if (strcmp(tokens[0], "pwd") == 0) { // Comparer avec "pwd"
+            // Ajouter un pointeur pour la position dans les tokens
+            int * pos = malloc(sizeof(int));
+            if(pos==NULL){
+                fprintf(stderr,"Erreur d'allocation de mémoire\n");
+                free(tokens);
+                free(line_copy);
+                free(ligne);
+                return 1;
+            }
+            *pos = 0;
+
+            // Exécuter les commandes
+            // Boucle pour traiter les tokens
+            while (tokens[*pos]!=NULL){
+                // Vérifier si la commande est interne
+               if (strcmp(tokens[*pos], "pwd") == 0) { // Comparer avec "pwd"
+                    *pos=*pos+1;
                     last_status = execute_pwd(); // Appeler execute_pwd et mettre à jour le statut
                 }
-                else if (strcmp(tokens[0], "cd") == 0) { // Comparer avec "cd"
-                    last_status = execute_cd(tokens); // Appeler execute_cd et mettre à jour le statut
+                else if (strcmp(tokens[*pos], "cd") == 0) { // Comparer avec "cd"
+                    *pos=*pos+1;
+                    last_status = execute_cd(tokens,pos); // Appeler execute_cd et mettre à jour le statut
                 }
-                else if (strcmp(tokens[0], "clear") == 0) { // Comparer avec "clear"
+                else if (strcmp(tokens[*pos], "clear") == 0) { // Comparer avec "clear"
+                    *pos=*pos+1;
                     execute_clear(tokens); // Appeler execute_clear
                     last_status = 0;       // Mettre à jour le statut
                 }
-                else if (strcmp(tokens[0], "man") == 0) { // Comparer avec "man"
-                    last_status = execute_man(tokens);
-                }
-                else if (strcmp(tokens[0], "exit") == 0) { // Comparer avec "exit"
-                    int exit_val = (tokens[1] != NULL) ? atoi(tokens[1]) : last_status; // Obtenir le code de sortie
+                else if (strcmp(tokens[*pos], "exit") == 0) { // Comparer avec "exit"
+                    *pos=*pos+1;
+                    int exit_val = (tokens[*pos] != NULL) ? atoi(tokens[*pos]) : last_status; // Obtenir le code de sortie
                     free(tokens);
                     free(line_copy);
                     free(ligne);
                     exit(exit_val);
+                    break; 
+                }
+                else if (strcmp(tokens[*pos],"&&")==0){
+                    *pos=*pos+1;
+                    if(last_status!=0){
+                       break;
+                    }
+                }
+                else if (strcmp(tokens[*pos],";")==0){
+                    *pos=*pos+1;
                 }
                 else {
-                    // Commande inconnue
-                    fprintf(stdout, "fsh: commande non reconnue: %s\n", tokens[0]);
-                    last_status = 1; // Mettre à jour le statut en échec
+                    *pos=*pos+1;
+                    last_status = execute_executable(tokens,pos);
                 }
             }
 
@@ -157,4 +274,44 @@ int main() {
     }
 
     return last_status;
+
+    /*
+                    else if (strcmp(tokens[0], "kill") == 0) {
+                    if (tokens[1] == NULL) {
+                        write(STDERR_FILENO, "fsh: kill: manque l'argument du PID\n", 36);
+                        last_status = 1;
+    */
+
+/*
+                else if (strncmp(tokens[0], "./", 2) == 0) {
+                    // Essayer d'exécuter une commande externe
+                    last_status = execute_external_command(tokens);
+
+                    // Vérifier le statut de retour et ajuster si nécessaire
+                    if (WIFEXITED(last_status)) {
+                        last_status = WEXITSTATUS(last_status);
+                    } else if (WIFSIGNALED(last_status)) {
+                        last_status = 128 + WTERMSIG(last_status);
+                    } else {
+                        last_status = 1; // Erreur générale
+                    }
+                }
+                else {
+                    last_status = execute_external_command(tokens);
+
+                // Vérifier le statut de retour et ajuster si nécessaire
+                if (WIFEXITED(last_status)) {
+                    last_status = WEXITSTATUS(last_status);
+                } else if (WIFSIGNALED(last_status)) {
+                    last_status = 128 + WTERMSIG(last_status);
+                } else {
+                    fprintf(stdout, "fsh: commande non reconnue: %s\n", tokens[0]);
+                    last_status = 1; // Erreur générale
+                }
+                }
+
+
+
+*/
+
 }   

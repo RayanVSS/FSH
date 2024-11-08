@@ -1,12 +1,13 @@
 CC = gcc                   
 CFLAGS = -Wall -Wextra -g    
-LIBS = -lreadline           
+LIBS = -lreadline -lncurses
 
 # Cible par défaut : créer l'exécutable fsh
 all: fsh
 
-fsh: main.o ls.o pwd.o cd.o clear.o man.o echo.o ftype.o touch.o
-	$(CC) $(CFLAGS) -o fsh main.o ls.o pwd.o cd.o clear.o man.o echo.o ftype.o touch.o $(LIBS)
+fsh: main.o  pwd.o cd.o clear.o  echo.o ftype.o touch.o executable.o compgen.o kill.o
+	$(CC) $(CFLAGS) -o fsh main.o pwd.o cd.o clear.o echo.o ftype.o touch.o executable.o compgen.o kill.o $(LIBS)
+
 
 main.o: main.c
 	$(CC) $(CFLAGS) -c main.c
@@ -34,6 +35,24 @@ ftype.o: ftype.c
 
 touch.o: touch.c  # Ajout de la règle pour compiler touch.c
 	$(CC) $(CFLAGS) -c touch.c  # Compilation de touch.c
+
+executable.o: 
+	$(CC) $(CFLAGS) -c executable.c
+ 
+tree.o: tree.c
+	$(CC) $(CFLAGS) -c tree.c
+	
+open.o: open.c
+	$(CC) $(CFLAGS) -c open.c
+
+compgen.o: compgen.c
+	$(CC) $(CFLAGS) -c compgen.c
+	
+myedit.o : myedit.c
+	$(CC) $(CFLAGS) -c myedit.c
+
+kill.o: kill.c
+	$(CC) $(CFLAGS) -c kill.c
 
 clean:
 	rm -f *.o fsh
