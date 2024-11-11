@@ -15,7 +15,7 @@
 int execute_touch(int argc, char *argv[]) {
     // Y a t'il un fichier ? 
     if (argc < 2) {
-        fprintf(stderr, "Mauvaise utilisation, merci de respecter : touch <file1> [<file2> ...]\n");
+        print(stderr, "Mauvaise utilisation, merci de respecter : touch <file1> [<file2> ...]\n");
         return 1;
     }
 

@@ -19,8 +19,9 @@ static char previous_dir[PATH_MAX] = "";
  */
 
 int verif(char *arg);
+void print(FILE *fd ,char *str);
 
-int execute_cd(char **args, int *pos) {
+int execute_cd(char **args) {
     char *target;         // Répertoire cible
     char cwd[PATH_MAX];   // Buffer pour stocker le répertoire courant
 
@@ -31,30 +32,26 @@ int execute_cd(char **args, int *pos) {
     }
 
     // Déterminer la cible du changement de répertoire
-    if (args[*pos] == NULL || strcmp(args[*pos], "~") == 0 || verif(args[*pos])==0) {
+    if (args[1] == NULL || strcmp(args[1], "~") == 0 || verif(args[1])==0) {
         // Aucun argument fourni, utiliser $HOME
         target = getenv("HOME");
         if (target == NULL) {
-            fprintf(stderr, "cd: HOME non défini.\n");
-            *pos = *pos + 1;
+            print(stderr, "cd: HOME non défini.\n");
             return 1;
         }
     }
-    else if (strcmp(args[*pos], "-") == 0) {
+    else if (strcmp(args[1], "-") == 0) {
         // Argument "-", revenir au répertoire précédent
         if (strlen(previous_dir) == 0) {
-            fprintf(stderr, "cd: Aucun répertoire précédent.\n");
-            *pos = *pos + 1;
+            print(stderr, "cd: Aucun répertoire précédent.\n");
             return 1;
         }
         target = previous_dir;
-        *pos = *pos + 1;
         printf("%s\n", target); // Afficher le répertoire précédent
     }
     else {
         // Argument fourni, utiliser REF
-        target = args[*pos];
-        *pos = *pos + 1;
+        target = args[1];
     }
 
     // Tenter de changer de répertoire
