@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <fcntl.h>
-
+#include <errno.h> // Ajout pour strerror
 
 const char *internal_commands[] = {
      "pwd", "cd", "clear", "history", "exit", "compgen","kill", NULL
@@ -69,7 +69,10 @@ int execute_external_command(char **args) {
 void afficher_prompt(int last_status, char *buffer, size_t size) {
     char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
-        perror("getcwd");
+        const char *prefix = "getcwd: ";
+        write(STDERR_FILENO, prefix, strlen(prefix));
+        write(STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
+        write(STDERR_FILENO, "\n", 1);
         strcpy(cwd, "?");
     }
 
@@ -138,14 +141,84 @@ int execute_history() {
     the_list = history_list(); //  liste de historique
     if (the_list && the_list[i+1] != NULL ) {
         for (i = 0; the_list[i+1]; i++) {
-            printf("%d  %s\n", i + history_base, the_list[i]->line);
+            char buffer[1024];
+            int len = snprintf(buffer, sizeof(buffer), "%d  %s\n", i + history_base, the_list[i]->line);
+            if (len > 0) {
+                write(STDOUT_FILENO, buffer, len);
+            }
         }
     } else {
-        printf("Aucune commande dans l'historique.\n");
+        const char *msg = "Aucune commande dans l'historique.\n";
+        write(STDOUT_FILENO, msg, strlen(msg));
         return 1;
     }
     return 0; // Retourne 0 pour indiquer un succès
 }
+
+
+//decouper la ligne en tokens en gérant
+char **argument(char *line, int *num_tokens) {
+    int bufsize = 64;
+    int position = 0;
+    char **tokens = malloc(bufsize * sizeof(char*));
+    if (!tokens) {
+        const char *msg = "fsh: allocation error\n";
+        write(STDERR_FILENO, msg, strlen(msg));
+        exit(EXIT_FAILURE);
+    }
+
+    char *token = malloc(strlen(line) + 1);
+    if (!token) {
+        const char *msg = "fsh: allocation error\n";
+        write(STDERR_FILENO, msg, strlen(msg));
+        exit(EXIT_FAILURE);
+    }
+    int tok_pos = 0;
+    int in_token = 0;
+
+    for (int i = 0; line[i] != '\0'; i++) {
+        if (line[i] == '\\') {
+            i++;
+            if (line[i] != '\0') {
+                token[tok_pos++] = line[i];
+            }
+        }
+        else if (line[i] == ' ') {
+            if (in_token) {
+                token[tok_pos] = '\0';
+                tokens[position++] = strdup(token);
+                tok_pos = 0;
+                in_token = 0;
+
+                // Réallouer si nécessaire
+                if (position >= bufsize) {
+                    bufsize += 64;
+                    tokens = realloc(tokens, bufsize * sizeof(char*));
+                    if (!tokens) {
+                        const char *msg = "fsh: allocation error\n";
+                        write(STDERR_FILENO, msg, strlen(msg));
+                        exit(EXIT_FAILURE);
+                    }
+                }
+            }
+        }
+        else {
+            token[tok_pos++] = line[i];
+            in_token = 1;
+        }
+    }
+
+    if (in_token) {
+        token[tok_pos] = '\0';
+        tokens[position++] = strdup(token);
+    }
+
+    tokens[position] = NULL;
+    *num_tokens = position;
+    free(token);
+    return tokens;
+}
+
 
 int main() {
     char *ligne;
@@ -167,7 +240,7 @@ int main() {
         ligne = readline(prompt);
 
         if (!ligne) { // EOF (Ctrl-D)
-            printf("\n");
+            write(STDOUT_FILENO, "\n", 1);
             break;
         }
 
@@ -178,46 +251,23 @@ int main() {
             // Copier la ligne pour le traitement (strtok modifie la chaîne)
             char *line_copy = strdup(ligne);
             if (!line_copy) {
-                perror("strdup");
+                const char *prefix = "strdup: ";
+                write(STDERR_FILENO, prefix, strlen(prefix));
+                write(STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
+                write(STDERR_FILENO, "\n", 1);
                 free(ligne);
                 continue;
             }
 
-            // Initialiser les variables pour le découpage en tokens
-            int bufsize = 64, position = 0;
-            char **tokens = malloc(bufsize * sizeof(char*)); // Allouer un buffer pour les tokens
-            if (!tokens) {
-                fprintf(stderr, "fsh: allocation error\n");
-                free(ligne);
-                free(line_copy);
-                continue;
-            }
-
-            // Découper la ligne en tokens séparés par des espaces
-            char *token = strtok(line_copy, " ");
-            while (token != NULL) {
-                tokens[position++] = token; // Ajouter le token au tableau
-
-                // Réallouer le buffer si nécessaire
-                if (position >= bufsize) {
-                    bufsize += 64; // Augmenter la taille du buffer
-                    tokens = realloc(tokens, bufsize * sizeof(char*)); // Réallouer
-                    if (!tokens) { // Vérifier la réallocation réussie
-                        fprintf(stderr, "fsh: allocation error\n");
-                        free(ligne);
-                        free(line_copy);
-                        break;
-                    }
-                }
-
-                token = strtok(NULL, " "); // Obtenir le prochain token
-            }
-            tokens[position] = NULL; // Terminer le tableau de tokens par NULL
+            //decouper les tokens
+            int num_tokens = 0;
+            char **tokens = argument(line_copy, &num_tokens);
 
             // Ajouter un pointeur pour la position dans les tokens
             int * pos = malloc(sizeof(int));
-            if(pos==NULL){
-                fprintf(stderr,"Erreur d'allocation de mémoire\n");
+            if(pos == NULL){
+                const char *msg = "Erreur d'allocation de mémoire\n";
+                write(STDERR_FILENO, msg, strlen(msg));
                 free(tokens);
                 free(line_copy);
                 free(ligne);
@@ -227,23 +277,23 @@ int main() {
 
             // Exécuter les commandes
             // Boucle pour traiter les tokens
-            while (tokens[*pos]!=NULL){
+            while (tokens[*pos] != NULL){
                 // Vérifier si la commande est interne
                if (strcmp(tokens[*pos], "pwd") == 0) { // Comparer avec "pwd"
-                    *pos=*pos+1;
+                    *pos = *pos + 1;
                     last_status = execute_pwd(); // Appeler execute_pwd et mettre à jour le statut
                 }
                 else if (strcmp(tokens[*pos], "cd") == 0) { // Comparer avec "cd"
-                    *pos=*pos+1;
-                    last_status = execute_cd(tokens,pos); // Appeler execute_cd et mettre à jour le statut
+                    *pos = *pos + 1;
+                    last_status = execute_cd(tokens, pos); // Appeler execute_cd et mettre à jour le statut
                 }
                 else if (strcmp(tokens[*pos], "clear") == 0) { // Comparer avec "clear"
-                    *pos=*pos+1;
+                    *pos = *pos + 1;
                     execute_clear(tokens); // Appeler execute_clear
                     last_status = 0;       // Mettre à jour le statut
                 }
                 else if (strcmp(tokens[*pos], "exit") == 0) { // Comparer avec "exit"
-                    *pos=*pos+1;
+                    *pos = *pos + 1;
                     int exit_val = (tokens[*pos] != NULL) ? atoi(tokens[*pos]) : last_status; // Obtenir le code de sortie
                     free(tokens);
                     free(line_copy);
@@ -251,23 +301,24 @@ int main() {
                     exit(exit_val);
                     break; 
                 }
-                else if (strcmp(tokens[*pos],"&&")==0){
-                    *pos=*pos+1;
-                    if(last_status!=0){
+                else if (strcmp(tokens[*pos], "&&") == 0){
+                    *pos = *pos + 1;
+                    if(last_status != 0){
                        break;
                     }
                 }
-                else if (strcmp(tokens[*pos],";")==0){
-                    *pos=*pos+1;
+                else if (strcmp(tokens[*pos], ";") == 0){
+                    *pos = *pos + 1;
                 }
                 else {
-                    *pos=*pos+1;
-                    last_status = execute_executable(tokens,pos);
+                    *pos = *pos + 1;
+                    last_status = execute_executable(tokens, pos);
                 }
             }
 
             free(tokens);
             free(line_copy);
+            free(pos); // Libérer la mémoire allouée pour pos
         }
 
         free(ligne);
@@ -276,16 +327,21 @@ int main() {
     return last_status;
 
     /*
-                    else if (strcmp(tokens[0], "kill") == 0) {
-                    if (tokens[1] == NULL) {
-                        write(STDERR_FILENO, "fsh: kill: manque l'argument du PID\n", 36);
-                        last_status = 1;
-    */
+                    else if (strncmp(tokens[0], "./", 2) == 0) {
+                        // Essayer d'exécuter une commande externe
+                        last_status = execute_external_command(tokens);
 
-/*
-                else if (strncmp(tokens[0], "./", 2) == 0) {
-                    // Essayer d'exécuter une commande externe
-                    last_status = execute_external_command(tokens);
+                        // Vérifier le statut de retour et ajuster si nécessaire
+                        if (WIFEXITED(last_status)) {
+                            last_status = WEXITSTATUS(last_status);
+                        } else if (WIFSIGNALED(last_status)) {
+                            last_status = 128 + WTERMSIG(last_status);
+                        } else {
+                            last_status = 1; // Erreur générale
+                        }
+                    }
+                    else {
+                        last_status = execute_external_command(tokens);
 
                     // Vérifier le statut de retour et ajuster si nécessaire
                     if (WIFEXITED(last_status)) {
@@ -293,25 +349,13 @@ int main() {
                     } else if (WIFSIGNALED(last_status)) {
                         last_status = 128 + WTERMSIG(last_status);
                     } else {
+                        const char *msg = "fsh: commande non reconnue: ";
+                        write(STDERR_FILENO, msg, strlen(msg));
+                        write(STDERR_FILENO, tokens[0], strlen(tokens[0]));
+                        write(STDERR_FILENO, "\n", 1);
                         last_status = 1; // Erreur générale
                     }
-                }
-                else {
-                    last_status = execute_external_command(tokens);
+                    }
 
-                // Vérifier le statut de retour et ajuster si nécessaire
-                if (WIFEXITED(last_status)) {
-                    last_status = WEXITSTATUS(last_status);
-                } else if (WIFSIGNALED(last_status)) {
-                    last_status = 128 + WTERMSIG(last_status);
-                } else {
-                    fprintf(stdout, "fsh: commande non reconnue: %s\n", tokens[0]);
-                    last_status = 1; // Erreur générale
-                }
-                }
-
-
-
-*/
-
+    */
 }   
