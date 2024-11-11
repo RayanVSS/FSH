@@ -65,6 +65,7 @@ int execute_external_command(char **args) {
 */
 
 
+
 // Fonction pour afficher le prompt
 void afficher_prompt(int last_status, char *buffer, size_t size) {
     char cwd[PATH_MAX];
@@ -88,8 +89,8 @@ void afficher_prompt(int last_status, char *buffer, size_t size) {
         snprintf(status_str, sizeof(status_str), "%d", last_status);
     }
 
-    // Tronquer si nécessaire
-    size_t max_length = 30;
+    // tronquer 
+    size_t max_length = 27;
     char display_cwd[PATH_MAX];
     if (strlen(cwd) > (max_length - 5)) { // 5 pour "...[x]"
         snprintf(display_cwd, sizeof(display_cwd), "...%s", cwd + strlen(cwd) - (max_length - 5));
@@ -98,7 +99,7 @@ void afficher_prompt(int last_status, char *buffer, size_t size) {
         display_cwd[sizeof(display_cwd)-1] = '\0';
     }
 
-    // Construire le prompt avec les séquences de couleur encapsulées
+    // contruire le prompt
     snprintf(buffer, size, "%s[%s]%s%s$ ", color, status_str, reset_color, display_cwd);
 }
 
@@ -149,14 +150,14 @@ int execute_history() {
         }
     } else {
         const char *msg = "Aucune commande dans l'historique.\n";
-        write(STDOUT_FILENO, msg, strlen(msg));
+        write(STDERR_FILENO, msg, strlen(msg));
         return 1;
     }
     return 0; // Retourne 0 pour indiquer un succès
 }
 
 
-//decouper la ligne en tokens en gérant
+//decouper la ligne en tokens
 char **argument(char *line, int *num_tokens) {
     int bufsize = 64;
     int position = 0;
@@ -224,6 +225,8 @@ int main() {
     char *ligne;
     int last_status = 0;
     char prompt[1024]; // Buffer pour le prompt
+    rl_outstream = stderr;
+
 
     // Ignorer SIGINT et SIGTERM dans le shell principal
     signal(SIGINT, SIG_IGN);
@@ -240,7 +243,7 @@ int main() {
         ligne = readline(prompt);
 
         if (!ligne) { // EOF (Ctrl-D)
-            write(STDOUT_FILENO, "\n", 1);
+            write(STDERR_FILENO, "\n", 1);
             break;
         }
 
@@ -279,22 +282,22 @@ int main() {
             // Boucle pour traiter les tokens
             while (tokens[*pos] != NULL){
                 // Vérifier si la commande est interne
-               if (strcmp(tokens[*pos], "pwd") == 0) { // Comparer avec "pwd"
+               if (strcmp(tokens[*pos], "pwd") == 0) {
                     *pos = *pos + 1;
-                    last_status = execute_pwd(); // Appeler execute_pwd et mettre à jour le statut
+                    last_status = execute_pwd(); 
                 }
-                else if (strcmp(tokens[*pos], "cd") == 0) { // Comparer avec "cd"
+                else if (strcmp(tokens[*pos], "cd") == 0) { 
                     *pos = *pos + 1;
-                    last_status = execute_cd(tokens, pos); // Appeler execute_cd et mettre à jour le statut
+                    last_status = execute_cd(tokens, pos); 
                 }
-                else if (strcmp(tokens[*pos], "clear") == 0) { // Comparer avec "clear"
+                else if (strcmp(tokens[*pos], "clear") == 0) { 
                     *pos = *pos + 1;
-                    execute_clear(tokens); // Appeler execute_clear
-                    last_status = 0;       // Mettre à jour le statut
+                    execute_clear(tokens); 
+                    last_status = 0;       
                 }
-                else if (strcmp(tokens[*pos], "exit") == 0) { // Comparer avec "exit"
+                else if (strcmp(tokens[*pos], "exit") == 0) {
                     *pos = *pos + 1;
-                    int exit_val = (tokens[*pos] != NULL) ? atoi(tokens[*pos]) : last_status; // Obtenir le code de sortie
+                    int exit_val = (tokens[*pos] != NULL) ? atoi(tokens[*pos]) : last_status; 
                     free(tokens);
                     free(line_copy);
                     free(ligne);

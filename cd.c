@@ -59,6 +59,7 @@ int execute_cd(char **args, int *pos) {
     // Tenter de changer de répertoire
     if (chdir(target) != 0) {
         perror("cd"); 
+        return 1;
     }
 
     // Mettre à jour le répertoire précédent
