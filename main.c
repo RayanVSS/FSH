@@ -13,7 +13,7 @@
 #include <errno.h> // Ajout pour strerror
 
 const char *internal_commands[] = {
-     "pwd", "cd", "clear", "history", "exit", "compgen","kill", NULL
+     "pwd", "cd", "clear", "history", "exit", "compgen","kill","ftype", NULL
 };
 
 //Commandes ici
@@ -28,6 +28,7 @@ int execute_executable(char **args, int *pos);
 int execute_history();
 int execute_compgen(const char *internal_commands[], int argc, char **argv);
 int execute_kill(pid_t pid, int signal);
+int execute_ftype(char **args, int *pos);
 
 /*
 
@@ -303,6 +304,10 @@ int main() {
                     free(ligne);
                     exit(exit_val);
                     break; 
+                }
+                else if (strcmp(tokens[*pos], "ftype") == 0) {
+                    *pos = *pos + 1;
+                    last_status = execute_ftype(tokens, pos);
                 }
                 else if (strcmp(tokens[*pos], "&&") == 0){
                     *pos = *pos + 1;

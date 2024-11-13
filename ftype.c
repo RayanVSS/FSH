@@ -4,20 +4,21 @@
 /**
  * Cette fonction affiche le type du fichier de référence REF.
  *
- * @param ref Le chemin vers le fichier de référence.
+ * @param pos Tableau de chaînes de caractères contenant les arguments.
  * @return int Retourne 0 en cas de succès, 1 en cas d'échec.
  */
-int execute_ftype(const char *ref) {
+int execute_ftype(char **args, int *pos) {
+    const char *ref = args[*pos];
+    *pos = *pos + 1;
     struct stat st;
 
     // Vérification du fichier grâce à un lstat
     if (lstat(ref, &st) == -1) {
-        perror("Problème avec le fichier");
+        perror("ftype:");
         return 1;
     }
 
-    // Affiche le type du fichier de référence REF (s'il s'agit d'une référence valide) : directory, regular file , symbolic link, named pipe, other.
-    // Après identification grace au if
+    // Affiche le type du fichier de référence REF
     if (S_ISDIR(st.st_mode)) {
         printf("directory\n");
     } else if (S_ISREG(st.st_mode)) {
@@ -26,6 +27,10 @@ int execute_ftype(const char *ref) {
         printf("symbolic link\n");
     } else if (S_ISFIFO(st.st_mode)) {
         printf("named pipe\n");
+    } else if (S_ISBLK(st.st_mode)) {
+        printf("block device\n");
+    } else if (S_ISSOCK(st.st_mode)) {
+        printf("socket\n");
     } else {
         printf("other\n");
     }
