@@ -27,7 +27,7 @@ int execute_kill(pid_t pid, int signal);
 int execute_history();
 // int execute_man(char **args); 
 // int execute_cat(char **args);
-int execute_ftype(char **args, int *pos);
+int execute_ftype(char **args);
 
 // Fonctions pour gérer les redirections
 int verif_redirection(char x);
@@ -149,7 +149,7 @@ int execute_commande(char **cmd) {
         exit(exit_val);
     }
     else if (strcmp(cmd[0], "ftype") == 0) {
-        last_status = execute_ftype(tokens);
+        last_status = execute_ftype(cmd);
     }
     else {
         last_status = execute_external_command(cmd);

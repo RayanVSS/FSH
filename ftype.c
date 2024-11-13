@@ -7,9 +7,8 @@
  * @param pos Tableau de chaînes de caractères contenant les arguments.
  * @return int Retourne 0 en cas de succès, 1 en cas d'échec.
  */
-int execute_ftype(char **args, int *pos) {
-    const char *ref = args[*pos];
-    *pos = *pos + 1;
+int execute_ftype(char **args) {
+    const char *ref = args[1];
     struct stat st;
 
     // Vérification du fichier grâce à un lstat

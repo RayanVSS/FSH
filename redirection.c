@@ -95,6 +95,6 @@ int execute_redirection (char **tokens , int pos , char **cmd) {
             dup2(stdout_copy,fileno(stdout));
             close(stdout_copy);
         }
-        return last_status;
+        return 0;
     }
 }
