@@ -173,6 +173,10 @@ int execute_commande(char **cmd) {
     else if (strcmp(cmd[0], "history") == 0) {            
         last_status = execute_history();
     }
+    else if (strcmp(cmd[0], "exit") == 0) { // Comparer avec "exit"
+        int exit_val = (cmd[0] != NULL) ? atoi(cmd[0]) : last_status; // Obtenir le code de sortie
+        exit(exit_val);
+    }
     else {
         last_status = execute_executable(cmd);
     }
@@ -264,31 +268,31 @@ int main() {
                     commande[y]=NULL;
                     last_status = execute_redirection(tokens,x,commande);
                     y=0;
-                    x+=1;
+                    x++;
                 }
                 else if (strcmp(tokens[x],"|")==0){
                     // a faire
+                    if(commande[0]!=NULL){
+                        last_status = execute_commande(commande);
+                        y=0;
+                    }
                 }
                 else if (strcmp(tokens[x],";")==0){
-                    commande[y+1]=NULL;
-                    last_status = execute_commande(commande);
-                    y=0;
+                    commande[y]=NULL;
+                    if(commande[0]!=NULL){
+                        last_status = execute_commande(commande);
+                        y=0;
+                    }
                 }
                 else if (strcmp(tokens[x],"&&")==0){
                     commande[y]=NULL;
-                    last_status = execute_commande(commande);
+                    if(commande[0]!=NULL){
+                        last_status = execute_commande(commande);
+                        y=0;
+                    }
                     if(last_status!=0){
                         break;
                     }
-                    y=0;
-                }
-                else if (strcmp(tokens[x], "exit") == 0) { // Comparer avec "exit"
-                    int exit_val = (tokens[x] != NULL) ? atoi(tokens[x]) : last_status; // Obtenir le code de sortie
-                    free(tokens);
-                    free(line_copy);
-                    free(ligne);
-                    exit(exit_val);
-                    break; 
                 }
                 else{
                     commande[y]=tokens[x];
@@ -304,7 +308,7 @@ int main() {
             free(tokens);
             free(line_copy);
         }
-
+    
         free(ligne);
     }
     return last_status;

@@ -29,7 +29,7 @@ int execute_compgen(char *internal_commands[], int argc, char **argv) {
     if (strcmp(argv[1], "-c") == 0) {
         list_internal_commands(internal_commands);
     } else {
-        print(stderr, "compgen: option inconnue: %s\n", argv[1]);
+        fprintf(stderr, "compgen: option inconnue: %s\n", argv[1]);
         perror("Erreur");
         return 1;
     }

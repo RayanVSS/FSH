@@ -43,12 +43,17 @@ int executer(char **args,char *path_commande,struct stat path_stat){
     if(stat(path_commande,&path_stat)==0){//Si le fichier existe dans le répertoire courant
         if(path_stat.st_mode & S_IXUSR){//Si le fichier est exécutable 
             char **argv = malloc(100*sizeof(char*));
+            if (argv == NULL) {
+                fprintf(stderr, "Erreur lors de l'allocation de la mémoire\n");
+                return 1;
+            }
             argv[0]=path_commande;
             int i = 1;
             while(args[i]!=NULL){
                 argv[i]=args[i];
                 i++;
             }
+            argv[i]=NULL;
             pid_t new_processus=fork();//On cree un processus fils pour exécuter le programme
             if(new_processus==-1){
                 fprintf(stderr, "Erreur lors de la création du processus fils\n");
@@ -66,7 +71,7 @@ int executer(char **args,char *path_commande,struct stat path_stat){
             return 0;
         }
         else{
-            print(stdout, strcat("fsh: fichier non exécutable: %s\n",args[0]));
+            fprintf(stdout, "fsh: fichier non exécutable: %s\n",args[0]);
             return 1;
         }
     }
@@ -89,6 +94,10 @@ int execute_executable(char **args) {
         strcpy(p,source);
         strtok(p, ":");
         char **PATH = malloc(100*sizeof(char*));
+        if (PATH == NULL) {
+            fprintf(stderr, "Erreur lors de l'allocation de la mémoire\n");
+            return 1;
+        }
         int i = 0;
         while(p != NULL){
             PATH[i++] = p;
