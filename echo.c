@@ -30,7 +30,7 @@ void echo_command(int argc, char *argv[]) {
     }
 
     // On parcourt les mots
-    for (i; i < argc; i++) {
+    for (int i=i;i < argc; i++) {
         printf("%s", argv[i]); // Affiche l'argument
 
         if (i < argc - 1) {

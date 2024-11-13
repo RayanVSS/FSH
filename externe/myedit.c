@@ -120,7 +120,7 @@ int execute_my_editor(char **args) {
                 break;
             }
             for (int i = 0; i < line_count; i++) {
-                fprintf(fp, "%s\n", lines[i]);
+                print(fp, "%s\n", lines[i]);
                 free(lines[i]);
                 lines[i] = NULL;
             }

@@ -17,54 +17,26 @@ const char *internal_commands[] = {
 };
 
 //Commandes ici
+
+// Foncctions pour gérer les commandes internes
 int execute_pwd();
-// void execute_ls(char **args,int *pos);
-int execute_cd(char **args, int *pos);
+// void execute_ls(char **args);
+int execute_cd(char **args);
 void execute_clear(); 
-// int execute_man(char **args); 
-// int execute_cat(char **args, int *pos);
-int execute_redirection(char **args, int *pos);
-int execute_executable(char **args, int *pos);
-int execute_history();
-int execute_compgen(const char *internal_commands[], int argc, char **argv);
 int execute_kill(pid_t pid, int signal);
+int execute_history();
+// int execute_man(char **args); 
+// int execute_cat(char **args);
 int execute_ftype(char **args, int *pos);
 
-/*
+// Fonctions pour gérer les redirections
+int verif_redirection(char x);
+int execute_redirection(char **args, int pos, char **commande);
 
-int execute_external_command(char **args) {
-    pid_t pid, wpid;
-    int status;
-
-    pid = fork(); // Créer un processus enfant
-
-    if (pid == 0) {
-        // processus enfant
-        signal(SIGINT, SIG_DFL);
-        signal(SIGTERM, SIG_DFL);
-
-        if (execvp(args[0], args) == -1) {
-            perror("fsh");
-            exit(EXIT_FAILURE);
-        }
-    } else if (pid < 0) {       
-        perror("fsh");
-    } else {
-        //processus parent
-        do {
-            wpid = waitpid(pid, &status, WUNTRACED);
-            if (wpid == -1) {
-                perror("fsh");
-                break;
-            }
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-    }
-
-    return status;
-}
-
-*/
-
+// Fonctions pour gérer les commandes externes
+int execute_executable(char **args);
+int execute_compgen(const char *internal_commands[], int argc, char **argv);
+int execute_external_command(char **args);
 
 
 // Fonction pour afficher le prompt
@@ -155,6 +127,34 @@ int execute_history() {
         return 1;
     }
     return 0; // Retourne 0 pour indiquer un succès
+}
+
+int execute_commande(char **cmd) {
+    int last_status = 0;
+    if (strcmp(cmd[0], "pwd") == 0) { // Comparer avec "pwd"
+        last_status = execute_pwd(); // Appeler execute_pwd et mettre à jour le statut
+    }
+    else if (strcmp(cmd[0], "cd") == 0) { // Comparer avec "cd"
+        last_status = execute_cd(cmd); // Appeler execute_cd et mettre à jour le statut
+    }
+    else if (strcmp(cmd[0], "clear") == 0) { // Comparer avec "clear"
+        execute_clear(cmd); // Appeler execute_clear
+        last_status = 0;       // Mettre à jour le statut
+    }
+    else if (strcmp(cmd[0], "history") == 0) {            
+        last_status = execute_history();
+    }
+    else if (strcmp(cmd[0], "exit") == 0) { // Comparer avec "exit"
+        int exit_val = (cmd[0] != NULL) ? atoi(cmd[0]) : last_status; // Obtenir le code de sortie
+        exit(exit_val);
+    }
+    else if (strcmp(cmd[0], "ftype") == 0) {
+        last_status = execute_ftype(tokens);
+    }
+    else {
+        last_status = execute_external_command(cmd);
+    }
+    return last_status;
 }
 
 
@@ -267,71 +267,69 @@ int main() {
             int num_tokens = 0;
             char **tokens = argument(line_copy, &num_tokens);
 
-            // Ajouter un pointeur pour la position dans les tokens
-            int * pos = malloc(sizeof(int));
-            if(pos == NULL){
-                const char *msg = "Erreur d'allocation de mémoire\n";
-                write(STDERR_FILENO, msg, strlen(msg));
+            // Exécuter les commandes
+            // Boucle pour traiter les tokens
+
+            char **commande = malloc(64*sizeof(char*));
+            if(commande==NULL){
+                write(STDERR_FILENO, "Allocation error\n", 17);
                 free(tokens);
                 free(line_copy);
                 free(ligne);
                 return 1;
             }
-            *pos = 0;
+            int x=0;
+            int y=0;
+            while (tokens[x]!=NULL){
+                if (verif_redirection(tokens[x][0])==1){
+                    commande[y]=NULL;
+                    last_status = execute_redirection(tokens,x,commande);
+                    y=0;
+                    x++;
+                }
+                else if (strcmp(tokens[x],"|")==0){
+                    // a faire
+                    if(commande[0]!=NULL){
+                        last_status = execute_commande(commande);
+                        y=0;
 
-            // Exécuter les commandes
-            // Boucle pour traiter les tokens
-            while (tokens[*pos] != NULL){
-                // Vérifier si la commande est interne
-               if (strcmp(tokens[*pos], "pwd") == 0) {
-                    *pos = *pos + 1;
-                    last_status = execute_pwd(); 
-                }
-                else if (strcmp(tokens[*pos], "cd") == 0) { 
-                    *pos = *pos + 1;
-                    last_status = execute_cd(tokens, pos); 
-                }
-                else if (strcmp(tokens[*pos], "clear") == 0) { 
-                    *pos = *pos + 1;
-                    execute_clear(tokens); 
-                    last_status = 0;       
-                }
-                else if (strcmp(tokens[*pos], "exit") == 0) {
-                    *pos = *pos + 1;
-                    int exit_val = (tokens[*pos] != NULL) ? atoi(tokens[*pos]) : last_status; 
-                    free(tokens);
-                    free(line_copy);
-                    free(ligne);
-                    exit(exit_val);
-                    break; 
-                }
-                else if (strcmp(tokens[*pos], "ftype") == 0) {
-                    *pos = *pos + 1;
-                    last_status = execute_ftype(tokens, pos);
-                }
-                else if (strcmp(tokens[*pos], "&&") == 0){
-                    *pos = *pos + 1;
-                    if(last_status != 0){
-                       break;
                     }
                 }
-                else if (strcmp(tokens[*pos], ";") == 0){
-                    *pos = *pos + 1;
+                else if (strcmp(tokens[x],";")==0){
+                    commande[y]=NULL;
+                    if(commande[0]!=NULL){
+                        last_status = execute_commande(commande);
+                        y=0;
+                    }
                 }
-                else {
-                    *pos = *pos + 1;
-                    last_status = execute_executable(tokens, pos);
+                else if (strcmp(tokens[x],"&&")==0){
+                    commande[y]=NULL;
+                    if(commande[0]!=NULL){
+                        last_status = execute_commande(commande);
+                        y=0;
+                    }
+                    if(last_status!=0){
+                        break;
+                    }
                 }
+                else{
+                    commande[y]=tokens[x];
+                    if(tokens[x+1]==NULL){
+                        commande[y+1]=NULL;
+                        last_status = execute_commande(commande);
+                    }
+                    y++;
+                }
+                x++;
             }
 
             free(tokens);
             free(line_copy);
-            free(pos); // Libérer la mémoire allouée pour pos
+            free(commande);
         }
-
+    
         free(ligne);
     }
-
     return last_status;
 
     /*
