@@ -13,7 +13,7 @@
 #include <errno.h> // Ajout pour strerror
 
 const char *internal_commands[] = {
-     "pwd", "cd", "clear", "history", "exit", "compgen","kill", NULL
+     "pwd", "cd", "clear", "history", "exit", "compgen","kill","ftype", NULL
 };
 
 //Commandes ici
@@ -27,6 +27,7 @@ int execute_kill(pid_t pid, int signal);
 int execute_history();
 // int execute_man(char **args); 
 // int execute_cat(char **args);
+int execute_ftype(char **args, int *pos);
 
 // Fonctions pour gérer les redirections
 int verif_redirection(char x);
@@ -146,6 +147,9 @@ int execute_commande(char **cmd) {
     else if (strcmp(cmd[0], "exit") == 0) { // Comparer avec "exit"
         int exit_val = (cmd[0] != NULL) ? atoi(cmd[0]) : last_status; // Obtenir le code de sortie
         exit(exit_val);
+    }
+    else if (strcmp(cmd[0], "ftype") == 0) {
+        last_status = execute_ftype(tokens);
     }
     else {
         last_status = execute_external_command(cmd);
@@ -288,6 +292,7 @@ int main() {
                     if(commande[0]!=NULL){
                         last_status = execute_commande(commande);
                         y=0;
+
                     }
                 }
                 else if (strcmp(tokens[x],";")==0){
