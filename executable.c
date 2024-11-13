@@ -39,6 +39,49 @@ int nb_arguments(char **args) {
     return compt;
 }
 
+int execute_external_command(char **args) {
+    pid_t pid, wpid;
+    int status;
+
+    pid = fork(); // Créer un processus enfant
+
+    if (pid == 0) {
+        // processus enfant
+        signal(SIGINT, SIG_DFL);
+        signal(SIGTERM, SIG_DFL);
+
+        if (execvp(args[0], args) == -1) {
+            perror("fsh");
+            exit(EXIT_FAILURE);
+        }
+    } else if (pid < 0) {       
+        perror("fsh");
+    } else {
+        //processus parent
+        do {
+            wpid = waitpid(pid, &status, WUNTRACED);
+            if (wpid == -1) {
+                perror("fsh");
+                break;
+            }
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    }
+
+    if (WIFEXITED(status)) {
+        status = WEXITSTATUS(status);
+    } else if (WIFSIGNALED(status)) {
+            status = 128 + WTERMSIG(status);
+    } else {
+        const char *msg = "fsh: commande non reconnue: ";
+        write(STDERR_FILENO, msg, strlen(msg));
+        write(STDERR_FILENO, args[0], strlen(args[0]));
+        write(STDERR_FILENO, "\n", 1);
+        status = 1; // Erreur générale
+    }
+    return status;
+}
+
+/*
 int executer(char **args,char *path_commande,struct stat path_stat){
     if(stat(path_commande,&path_stat)==0){//Si le fichier existe dans le répertoire courant
         if(path_stat.st_mode & S_IXUSR){//Si le fichier est exécutable 
@@ -126,3 +169,4 @@ int execute_executable(char **args) {
 
     return 0;
 }
+*/
