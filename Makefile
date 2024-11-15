@@ -8,7 +8,6 @@ all: fsh
 fsh: main.o  pwd.o cd.o clear.o  echo.o ftype.o touch.o executable.o compgen.o kill.o redirection.o
 	$(CC) $(CFLAGS) -o fsh main.o pwd.o cd.o clear.o echo.o ftype.o touch.o executable.o compgen.o kill.o redirection.o $(LIBS)
 
-
 main.o: main.c
 	$(CC) $(CFLAGS) -c main.c
 

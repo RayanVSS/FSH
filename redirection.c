@@ -8,8 +8,8 @@
 
 int execute_commande(char **cmd); 
 
-int verif_redirection(char x){
-    if (x=='>' || x=='<' || x=='2'){
+int verif_redirection(char* x){
+    if (strcmp(x,"<")==0 || strcmp(x,">")==0 || strcmp(x,"2>")==0 || strcmp(x,">>")==0 || strcmp(x,"2>>")==0 || strcmp(x,">|")==0 || strcmp(x,"2>|")==0){
         return 1;
     }
     return 0;

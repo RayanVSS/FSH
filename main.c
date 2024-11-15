@@ -30,7 +30,7 @@ int execute_history();
 int execute_ftype(char **args);
 
 // Fonctions pour gérer les redirections
-int verif_redirection(char x);
+int verif_redirection(char *x);
 int execute_redirection(char **args, int pos, char **commande);
 
 // Fonctions pour gérer les commandes externes
@@ -144,10 +144,6 @@ int execute_commande(char **cmd) {
     else if (strcmp(cmd[0], "history") == 0) {            
         last_status = execute_history();
     }
-    else if (strcmp(cmd[0], "exit") == 0) { // Comparer avec "exit"
-        int exit_val = (cmd[0] != NULL) ? atoi(cmd[0]) : last_status; // Obtenir le code de sortie
-        exit(exit_val);
-    }
     else if (strcmp(cmd[0], "ftype") == 0) {
         last_status = execute_ftype(cmd);
     }
@@ -156,6 +152,7 @@ int execute_commande(char **cmd) {
     }
     return last_status;
 }
+
 
 
 //decouper la ligne en tokens
@@ -281,11 +278,18 @@ int main() {
             int x=0;
             int y=0;
             while (tokens[x]!=NULL){
-                if (verif_redirection(tokens[x][0])==1){
+                if (verif_redirection(tokens[x])==1){
                     commande[y]=NULL;
                     last_status = execute_redirection(tokens,x,commande);
                     y=0;
                     x++;
+                } else if (strcmp(tokens[0], "exit") == 0) { // Comparer avec "exit"
+                    int exit_val = (tokens[x+1] != NULL)  ? atoi(tokens[x+1]) : last_status; // Obtenir le code de sortie
+                    free(tokens);
+                    free(line_copy);
+                    free(commande);
+                    free(ligne);
+                    exit(exit_val);
                 }
                 else if (strcmp(tokens[x],"|")==0){
                     // a faire
