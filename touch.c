@@ -1,8 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <unistd.h>
+#include <unistd.h>  
+#include <fcntl.h>   
+#include <errno.h>   
+#include <string.h>  
 
 /**
  * Fonction execute_touch : crée un fichier si celui-ci n'existe pas.
@@ -13,9 +12,10 @@
  */
 
 int execute_touch(int argc, char *argv[]) {
-    // Y a t'il un fichier ? 
+    // Vérifie s'il y a au moins un fichier en argument
     if (argc < 2) {
-        fprintf(stderr, "Mauvaise utilisation, merci de respecter : touch <file1> [<file2> ...]\n");
+        const char *msg = "Mauvaise utilisation, merci de respecter : touch <file1> [<file2> ...]\n";
+        write(STDERR_FILENO, msg, strlen(msg));
         return 1;
     }
 
@@ -27,16 +27,22 @@ int execute_touch(int argc, char *argv[]) {
         if (fd == -1) {
             // Vérifie si le fichier existe déjà
             if (errno == EEXIST) {
-                printf("Le fichier '%s' existe déjà, donc il n'a pas été créé.\n", filename);
+                const char *exist_msg = "Le fichier '";
+                const char *exist_end = "' existe déjà, il n'a pas été recréé.\n";
+                write(STDOUT_FILENO, exist_msg, strlen(exist_msg));
+                write(STDOUT_FILENO, filename, strlen(filename));
+                write(STDOUT_FILENO, exist_end, strlen(exist_end));
             } else {
-                perror("Erreur lors de la création du fichier");
+                // Affiche une erreur générique si autre problème
+                const char *error_msg = "Erreur lors de la création du fichier : ";
+                write(STDERR_FILENO, error_msg, strlen(error_msg));
+                write(STDERR_FILENO, filename, strlen(filename));
+                write(STDERR_FILENO, "\n", 1);
             }
-            return 1; // Retourne une erreur si une autre raison d'échec
+            continue; // Passe au fichier suivant sans interrompre la boucle
         }
 
-        // Ferme le descripteur de fichier
-        close(fd);
-        printf("Le fichier '%s' a été créé avec succès.\n", filename);
+        close(fd); // Ferme le fichier après création
     }
 
     return 0; // Succès
