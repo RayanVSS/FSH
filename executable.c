@@ -10,6 +10,7 @@
  */
 
 struct stat *path_stat;
+void print(FILE *fd ,char *str);
 
 char *concat(char *s1, char *s2){
     char *result = malloc(strlen(s1)+strlen(s2)+1);
@@ -28,30 +29,74 @@ int verif(char *arg){
 }
 
 // Fonction qui donne le nombre de fichier passé en argument
-int nb_arguments(char **args, int *pos) {
+int nb_arguments(char **args) {
     int compt = 0;
-    int i = *pos;
+    int i = 1;
     while(args[i] != NULL) {
-        if(verif(args[i])==0) {
-           return compt;
-        }
         i++;
         compt++;
     }
     return compt;
 }
 
-int executer(char **args,char *path_commande, int *pos,struct stat path_stat,int nb){
-    if(stat(path_commande,&path_stat)==0){//Si le fichier existe dans le répertoire courant
-        if(path_stat.st_mode & S_IXUSR){//Si le fichier est exécutable
-            char *arguments[nb+2];
-            arguments[0] = path_commande;
-            for(int i=1; i<=nb; i++){//Ajouter les arguments
-                arguments[i] = args[*pos+i-1];
-            }
-            *pos = *pos + nb;
-            arguments[nb+1] = NULL;
+int execute_external_command(char **args) {
+    pid_t pid, wpid;
+    int status;
 
+    pid = fork(); // Créer un processus enfant
+
+    if (pid == 0) {
+        // processus enfant
+        signal(SIGINT, SIG_DFL);
+        signal(SIGTERM, SIG_DFL);
+
+        if (execvp(args[0], args) == -1) {
+            perror("fsh");
+            exit(EXIT_FAILURE);
+        }
+    } else if (pid < 0) {       
+        perror("fsh");
+    } else {
+        //processus parent
+        do {
+            wpid = waitpid(pid, &status, WUNTRACED);
+            if (wpid == -1) {
+                perror("fsh");
+                break;
+            }
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    }
+
+    if (WIFEXITED(status)) {
+        status = WEXITSTATUS(status);
+    } else if (WIFSIGNALED(status)) {
+            status = 128 + WTERMSIG(status);
+    } else {
+        const char *msg = "fsh: commande non reconnue: ";
+        write(STDERR_FILENO, msg, strlen(msg));
+        write(STDERR_FILENO, args[0], strlen(args[0]));
+        write(STDERR_FILENO, "\n", 1);
+        status = 1; // Erreur générale
+    }
+    return status;
+}
+
+/*
+int executer(char **args,char *path_commande,struct stat path_stat){
+    if(stat(path_commande,&path_stat)==0){//Si le fichier existe dans le répertoire courant
+        if(path_stat.st_mode & S_IXUSR){//Si le fichier est exécutable 
+            char **argv = malloc(100*sizeof(char*));
+            if (argv == NULL) {
+                fprintf(stderr, "Erreur lors de l'allocation de la mémoire\n");
+                return 1;
+            }
+            argv[0]=path_commande;
+            int i = 1;
+            while(args[i]!=NULL){
+                argv[i]=args[i];
+                i++;
+            }
+            argv[i]=NULL;
             pid_t new_processus=fork();//On cree un processus fils pour exécuter le programme
             if(new_processus==-1){
                 fprintf(stderr, "Erreur lors de la création du processus fils\n");
@@ -59,7 +104,7 @@ int executer(char **args,char *path_commande, int *pos,struct stat path_stat,int
             }
 
             if(new_processus==0){
-                int erreur =execvp(path_commande, arguments);//On execute le programme
+                int erreur =execvp(path_commande, argv);//On execute le programme
                 perror("execvp");
                 return erreur ;exit(1);
             }
@@ -69,8 +114,7 @@ int executer(char **args,char *path_commande, int *pos,struct stat path_stat,int
             return 0;
         }
         else{
-            fprintf(stdout, "fsh: fichier non exécutable: %s\n", args[*pos-1]);
-            *pos = *pos + nb;
+            fprintf(stdout, "fsh: fichier non exécutable: %s\n",args[0]);
             return 1;
         }
     }
@@ -81,10 +125,9 @@ int executer(char **args,char *path_commande, int *pos,struct stat path_stat,int
 
 
 
-int execute_executable(char **args, int *pos) {
+int execute_executable(char **args) {
     struct stat path_stat;
-    int nb=nb_arguments(args,pos);
-    int verif_execute = executer(args,args[*pos -1], pos, path_stat,nb);
+    int verif_execute = executer(args,args[0], path_stat);
     if(verif_execute==0 || verif_execute==1){
         return verif_execute;
     }
@@ -94,6 +137,10 @@ int execute_executable(char **args, int *pos) {
         strcpy(p,source);
         strtok(p, ":");
         char **PATH = malloc(100*sizeof(char*));
+        if (PATH == NULL) {
+            fprintf(stderr, "Erreur lors de l'allocation de la mémoire\n");
+            return 1;
+        }
         int i = 0;
         while(p != NULL){
             PATH[i++] = p;
@@ -102,8 +149,8 @@ int execute_executable(char **args, int *pos) {
         PATH[i] = NULL;
         i = 0;
         while (PATH[i] != NULL) {//On parcourt le PATH
-            char *path_commande = concat(concat(PATH[i], "/"), args[*pos-1]);
-            verif_execute = executer(args,path_commande, pos, path_stat, nb);
+            char *path_commande = concat(concat(PATH[i], "/"), args[0]);
+            verif_execute = executer(args,path_commande, path_stat);
             if (verif_execute>=0){
                 free(path_commande);
                 free(PATH);
@@ -113,8 +160,7 @@ int execute_executable(char **args, int *pos) {
             i++;
         }
         if(verif_execute==-1){
-            fprintf(stdout, "fsh: commande introuvable: %s\n", args[*pos-1]);
-            *pos = *pos + nb;
+            printf("fsh: %s: commande introuvable\n",args[0]);
             free(PATH);
             free(p);
             return 1;
@@ -123,3 +169,4 @@ int execute_executable(char **args, int *pos) {
 
     return 0;
 }
+*/
