@@ -1,5 +1,7 @@
-#include <stdio.h>
+#include <unistd.h>
 #include <sys/stat.h>
+#include <string.h>
+#include <errno.h>
 
 /**
  * Cette fonction affiche le type du fichier de référence REF.
@@ -19,11 +21,11 @@ int execute_ftype(char **args) {
 
     // Affiche le type du fichier de référence REF
     if (S_ISDIR(st.st_mode)) {
-        printf("directory\n");
+        type = "directory\n";
     } else if (S_ISREG(st.st_mode)) {
-        printf("regular file\n");
+        type = "regular file\n";
     } else if (S_ISLNK(st.st_mode)) {
-        printf("symbolic link\n");
+        type = "symbolic link\n";
     } else if (S_ISFIFO(st.st_mode)) {
         printf("named pipe\n");
     } else if (S_ISBLK(st.st_mode)) {
@@ -31,8 +33,10 @@ int execute_ftype(char **args) {
     } else if (S_ISSOCK(st.st_mode)) {
         printf("socket\n");
     } else {
-        printf("other\n");
+        type = "other\n";
     }
 
+    // Écrit le type du fichier dans stdout
+    write(STDOUT_FILENO, type, strlen(type));
     return 0;
 }
