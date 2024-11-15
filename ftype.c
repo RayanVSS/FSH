@@ -1,5 +1,7 @@
-#include <stdio.h>
+#include <unistd.h>
 #include <sys/stat.h>
+#include <string.h>
+#include <errno.h>
 
 /**
  * Cette fonction affiche le type du fichier de référence REF.
@@ -12,23 +14,28 @@ int execute_ftype(const char *ref) {
 
     // Vérification du fichier grâce à un lstat
     if (lstat(ref, &st) == -1) {
-        perror("Problème avec le fichier");
+        const char *error_msg = "Problème avec le fichier : ";
+        write(STDERR_FILENO, error_msg, strlen(error_msg));
+        write(STDERR_FILENO, ref, strlen(ref));
+        write(STDERR_FILENO, "\n", 1);
         return 1;
     }
 
-    // Affiche le type du fichier de référence REF (s'il s'agit d'une référence valide) : directory, regular file , symbolic link, named pipe, other.
-    // Après identification grace au if
+    // Détermine et affiche le type du fichier
+    const char *type = NULL;
     if (S_ISDIR(st.st_mode)) {
-        printf("directory\n");
+        type = "directory\n";
     } else if (S_ISREG(st.st_mode)) {
-        printf("regular file\n");
+        type = "regular file\n";
     } else if (S_ISLNK(st.st_mode)) {
-        printf("symbolic link\n");
+        type = "symbolic link\n";
     } else if (S_ISFIFO(st.st_mode)) {
-        printf("named pipe\n");
+        type = "named pipe\n";
     } else {
-        printf("other\n");
+        type = "other\n";
     }
 
+    // Écrit le type du fichier dans stdout
+    write(STDOUT_FILENO, type, strlen(type));
     return 0;
 }
