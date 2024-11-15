@@ -79,8 +79,8 @@ int is_url(const char *str) {
  */
 int execute_open(char **args) {
     if (args[1] == NULL) {
-        print(stderr, "fsh: open: argument manquant\n");
-        print(stderr, "Usage: open <fichier_ou_répertoire> [<fichier_ou_répertoire> ...]\n");
+        fprintf(stderr, "fsh: open: argument manquant\n");
+        fprintf(stderr, "Usage: open <fichier_ou_répertoire> [<fichier_ou_répertoire> ...]\n");
         return 1;
     }
 
@@ -121,7 +121,7 @@ int execute_open(char **args) {
                 printf("fsh: open: Extension trouvée pour '%s'. Application choisie: %s\n", path, app);
             }
             else {
-                print(stderr, "fsh: open: pas d'application associée pour '%s'\n", path);
+                fprintf(stderr, "fsh: open: pas d'application associée pour '%s'\n", path);
                 continue;
             }
         }
