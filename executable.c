@@ -67,6 +67,7 @@ int execute_external_command(char **args) {
         } while (!WIFEXITED(status) && !WIFSIGNALED(status));
     }
 
+    
     if (WIFEXITED(status)) {
         status = WEXITSTATUS(status);
     } else if (WIFSIGNALED(status)) {

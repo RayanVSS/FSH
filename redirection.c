@@ -8,17 +8,44 @@
 
 int execute_commande(char **cmd); 
 
-int verif_redirection(char* x){
-    if (strcmp(x,"<")==0 || strcmp(x,">")==0 || strcmp(x,"2>")==0 || strcmp(x,">>")==0 || strcmp(x,"2>>")==0 || strcmp(x,">|")==0 || strcmp(x,"2>|")==0){
+int verif_redirection(char **cmd , int pos){
+    if (strcmp(cmd[pos], "<") == 0 || strcmp(cmd[pos], ">") == 0 || strcmp(cmd[pos], "2>") == 0 || strcmp(cmd[pos], ">>") == 0 || strcmp(cmd[pos], "2>>") == 0 || strcmp(cmd[pos], ">|") == 0 || strcmp(cmd[pos], "2>|") == 0){
         return 1;
     }
     return 0;
 }
 
-int execute_redirection (char **tokens , int pos , char **cmd) {
+int hasredirection(char** cmd){
+    int x=0;
+    while (cmd[x]!=NULL){
+        if (verif_redirection(cmd,x)==1){
+            return x;
+        }
+        x++;
+    }
+    return -1;
+}
+
+void extract(char ** tokens , char **cmd, int pos) {
+    for (int i = 0; i < pos; i++) {
+        cmd[i] = tokens[i];
+    }
+    cmd[pos] = NULL;
+}
+
+int execute_redirection (char **tokens , int pos) {
     int flag = 0;
     int sortie_erreur = 0;
     int last_status = 0;
+
+    char **cmd = malloc(pos*sizeof(char *));
+
+    if (cmd == NULL) {
+        perror("Erreur lors de l'allocation de mémoire pour les commandes");
+        return 1;
+    }
+
+    extract(tokens,cmd,pos);
 
     if (cmd[0]==NULL){
         fprintf(stderr,"Aucune commande spécifiée\n");

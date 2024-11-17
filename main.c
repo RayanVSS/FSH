@@ -30,8 +30,11 @@ int execute_history();
 int execute_ftype(char **args);
 
 // Fonctions pour gérer les redirections
-int verif_redirection(char *x);
-int execute_redirection(char **args, int pos, char **commande);
+int hasredirection(char** cmd);
+int execute_redirection(char **args, int pos);
+
+// Fonctions pour gérer les pipelines
+int execute_pipeline(char **commande, int pipeline);
 
 // Fonctions pour gérer les commandes externes
 int execute_executable(char **args);
@@ -131,7 +134,11 @@ int execute_history() {
 
 int execute_commande(char **cmd) {
     int last_status = 0;
-    if (strcmp(cmd[0], "pwd") == 0) { // Comparer avec "pwd"
+    int redirection = hasredirection(cmd);
+    if (redirection != -1) {
+        last_status = execute_redirection(cmd, redirection);
+    }
+    else if (strcmp(cmd[0], "pwd") == 0) { // Comparer avec "pwd"
         last_status = execute_pwd(); // Appeler execute_pwd et mettre à jour le statut
     }
     else if (strcmp(cmd[0], "cd") == 0) { // Comparer avec "cd"
@@ -152,8 +159,6 @@ int execute_commande(char **cmd) {
     }
     return last_status;
 }
-
-
 
 //decouper la ligne en tokens
 char **argument(char *line, int *num_tokens) {
@@ -264,9 +269,6 @@ int main() {
             int num_tokens = 0;
             char **tokens = argument(line_copy, &num_tokens);
 
-            // Exécuter les commandes
-            // Boucle pour traiter les tokens
-
             char **commande = malloc(64*sizeof(char*));
             if(commande==NULL){
                 write(STDERR_FILENO, "Allocation error\n", 17);
@@ -276,14 +278,14 @@ int main() {
                 return 1;
             }
             int x=0;
-            int y=0;
+            int y=0;    
+            int pipeline=0;
+
+            // Exécuter les commandes
+            // Boucle pour traiter les tokens
+
             while (tokens[x]!=NULL){
-                if (verif_redirection(tokens[x])==1){
-                    commande[y]=NULL;
-                    last_status = execute_redirection(tokens,x,commande);
-                    y=0;
-                    x++;
-                } else if (strcmp(tokens[0], "exit") == 0) { // Comparer avec "exit"
+                if (x==0 && strcmp(tokens[x], "exit") == 0) { // Comparer avec "exit"
                     int exit_val = (tokens[x+1] != NULL)  ? atoi(tokens[x+1]) : last_status; // Obtenir le code de sortie
                     free(tokens);
                     free(line_copy);
@@ -292,24 +294,39 @@ int main() {
                     exit(exit_val);
                 }
                 else if (strcmp(tokens[x],"|")==0){
-                    // a faire
-                    if(commande[0]!=NULL){
-                        last_status = execute_commande(commande);
-                        y=0;
-
+                    pipeline++;
+                    commande[y]="|";
+                    if(strcmp(tokens[x+1], "exit") == 0){
+                        int exit_val = (tokens[x+2] != NULL)  ? atoi(tokens[x+2]) : last_status; // Obtenir le code de sortie
+                        free(tokens);
+                        free(line_copy);
+                        free(commande);
+                        free(ligne);
+                        exit(exit_val);
                     }
+                    y++;
                 }
                 else if (strcmp(tokens[x],";")==0){
                     commande[y]=NULL;
                     if(commande[0]!=NULL){
-                        last_status = execute_commande(commande);
+                        if(pipeline>0){
+                            last_status = execute_pipeline(commande,pipeline+1);
+                            pipeline=0;
+                        } else {
+                            last_status = execute_commande(commande);
+                        }
                         y=0;
                     }
                 }
                 else if (strcmp(tokens[x],"&&")==0){
                     commande[y]=NULL;
                     if(commande[0]!=NULL){
-                        last_status = execute_commande(commande);
+                        if(pipeline>0){
+                            last_status = execute_pipeline(commande,pipeline+1);
+                            pipeline=0;
+                        } else {
+                            last_status = execute_commande(commande);
+                        }
                         y=0;
                     }
                     if(last_status!=0){
@@ -320,9 +337,16 @@ int main() {
                     commande[y]=tokens[x];
                     if(tokens[x+1]==NULL){
                         commande[y+1]=NULL;
-                        last_status = execute_commande(commande);
+                        if(pipeline>0){
+                            last_status = execute_pipeline(commande,pipeline+1);
+                            pipeline=0;
+                        } else {
+                            last_status = execute_commande(commande);
+                        }
                     }
-                    y++;
+                    else{
+                        y++;
+                    }
                 }
                 x++;
             }
