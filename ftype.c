@@ -2,24 +2,27 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <errno.h>
+#include <stdio.h>
 
 /**
  * Cette fonction affiche le type du fichier de référence REF.
  *
- * @param pos Tableau de chaînes de caractères contenant les arguments.
+ * @param ref Le chemin vers le fichier de référence.
  * @return int Retourne 0 en cas de succès, 1 en cas d'échec.
  */
 int execute_ftype(char **args) {
     const char *ref = args[1];
     struct stat st;
 
+
     // Vérification du fichier grâce à un lstat
     if (lstat(ref, &st) == -1) {
-        perror("ftype:");
+        perror("lstat :");
         return 1;
     }
 
-    // Affiche le type du fichier de référence REF
+    // Détermine et affiche le type du fichier
+    const char *type = NULL;
     if (S_ISDIR(st.st_mode)) {
         type = "directory\n";
     } else if (S_ISREG(st.st_mode)) {
@@ -27,11 +30,7 @@ int execute_ftype(char **args) {
     } else if (S_ISLNK(st.st_mode)) {
         type = "symbolic link\n";
     } else if (S_ISFIFO(st.st_mode)) {
-        printf("named pipe\n");
-    } else if (S_ISBLK(st.st_mode)) {
-        printf("block device\n");
-    } else if (S_ISSOCK(st.st_mode)) {
-        printf("socket\n");
+        type = "named pipe\n";
     } else {
         type = "other\n";
     }
@@ -40,3 +39,4 @@ int execute_ftype(char **args) {
     write(STDOUT_FILENO, type, strlen(type));
     return 0;
 }
+
