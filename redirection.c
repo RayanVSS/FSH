@@ -42,7 +42,7 @@ int execute_redirection (char **tokens , int pos) {
 
     if (cmd == NULL) {
         perror("Erreur lors de l'allocation de mémoire pour les commandes");
-        return -1;
+        return 1;
     }
 
     extract(tokens,cmd,pos);

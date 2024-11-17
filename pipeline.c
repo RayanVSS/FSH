@@ -43,14 +43,14 @@ int execute_pipeline(char **tokens, int n) {
     char ***cmds = malloc((n + 1) * sizeof(char **));
     if (cmds == NULL) {
         perror("Erreur lors de l'allocation de mémoire pour les commandes");
-        return -1;
+        return 1;
     }
 
     for (int i = 0; i < n + 1; i++) {
         cmds[i] = malloc(64 * sizeof(char *));
         if (cmds[i] == NULL) {
             perror("Erreur lors de l'allocation de mémoire pour les commandes");
-            return -1;
+            return 1;
         }
     }
 
@@ -63,12 +63,12 @@ int execute_pipeline(char **tokens, int n) {
         // Crée un pipe pour chaque commande sauf la dernière
         if (i < n - 1 && pipe(pipefd) == -1) {
             perror("Erreur lors de la création du pipe");
-            return -1;
+            return 1;
         }
         pid = fork();
         if (pid == -1) {
             perror("Erreur lors du fork");
-            return -1;
+            return 1;
         }
 
         if (pid == 0) {
@@ -86,7 +86,7 @@ int execute_pipeline(char **tokens, int n) {
             } 
 
             // Exécution de la commande
-            int s=execute_commande(cmds[i]);
+            int s = execute_commande(cmds[i]);
             if (s == -1) {
                 perror("Erreur lors de l'exécution de la commande");
                 exit(EXIT_FAILURE);
@@ -111,7 +111,7 @@ int execute_pipeline(char **tokens, int n) {
     }
     free(cmds);
 
-    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+    return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
 }
 
 /*

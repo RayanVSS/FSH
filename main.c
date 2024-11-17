@@ -269,9 +269,6 @@ int main() {
             int num_tokens = 0;
             char **tokens = argument(line_copy, &num_tokens);
 
-            // Exécuter les commandes
-            // Boucle pour traiter les tokens
-
             char **commande = malloc(64*sizeof(char*));
             if(commande==NULL){
                 write(STDERR_FILENO, "Allocation error\n", 17);
@@ -283,8 +280,12 @@ int main() {
             int x=0;
             int y=0;    
             int pipeline=0;
+
+            // Exécuter les commandes
+            // Boucle pour traiter les tokens
+
             while (tokens[x]!=NULL){
-                if (strcmp(tokens[x], "exit") == 0) { // Comparer avec "exit"
+                if (x==0 && strcmp(tokens[x], "exit") == 0) { // Comparer avec "exit"
                     int exit_val = (tokens[x+1] != NULL)  ? atoi(tokens[x+1]) : last_status; // Obtenir le code de sortie
                     free(tokens);
                     free(line_copy);
@@ -295,6 +296,14 @@ int main() {
                 else if (strcmp(tokens[x],"|")==0){
                     pipeline++;
                     commande[y]="|";
+                    if(strcmp(tokens[x+1], "exit") == 0){
+                        int exit_val = (tokens[x+2] != NULL)  ? atoi(tokens[x+2]) : last_status; // Obtenir le code de sortie
+                        free(tokens);
+                        free(line_copy);
+                        free(commande);
+                        free(ligne);
+                        exit(exit_val);
+                    }
                     y++;
                 }
                 else if (strcmp(tokens[x],";")==0){
