@@ -20,7 +20,7 @@
  * @param args Tableau de chaînes contenant les arguments de la commande `ls`
  */
 
-void execute_ls(char **args,int *pos) {
+void execute_ls(char **args) {
     DIR *dir;
     struct dirent *entry;
     struct stat file_stat;
@@ -28,7 +28,7 @@ void execute_ls(char **args,int *pos) {
     int long_format = 0;
     int show_all = 0;
     // Parcourir les arguments pour détecter les options et le chemin
-    for (int i = *pos; args[i] != NULL; i++) {
+    for (int i = 0; args[i] != NULL; i++) {
         if (args[i][0] == '-') {
             // Parcourir les options après le '-'
             for (size_t j = 1; j < strlen(args[i]); j++) {
@@ -39,16 +39,14 @@ void execute_ls(char **args,int *pos) {
                     show_all = 1;
                 }
                 else {
-                    fprintf(stderr, "fsh: ls: option inconnue -- '%c'\n", args[i][j]);
+                    print(stderr, "fsh: ls: option inconnue -- '%c'\n", args[i][j]);
                     return;
                 }
             }
-            *pos = *pos + 1; 
         }
         else {
             // Si l'argument ne commence pas par '-', c'est un chemin
             path = args[i];
-            *pos = *pos + 1;
         }
     }
 
@@ -121,7 +119,7 @@ void execute_ls(char **args,int *pos) {
             strftime(time_str, sizeof(time_str), "%b %d %H:%M", tm_info);
 
             // Afficher les informations détaillées
-            fprintf(stdout,"%c%s %d %s %s %5ld %s %s\n",
+            print(stdout,"%c%s %d %s %s %5ld %s %s\n",
                    file_type,
                    permissions,
                    links,
@@ -133,7 +131,7 @@ void execute_ls(char **args,int *pos) {
         }
         else {
             // Affichage simple
-            fprintf(stdout,"%s  ", entry->d_name);
+            print(stdout,"%s  ", entry->d_name);
         }
     }
 
