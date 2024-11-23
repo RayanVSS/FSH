@@ -19,6 +19,7 @@ static char previous_dir[PATH_MAX] = "";
  */
 
 int verif(char *arg);
+int print(char* string , int sortie);
 
 int execute_cd(char **args) {
     char *target;         // Répertoire cible
@@ -35,14 +36,14 @@ int execute_cd(char **args) {
         // Aucun argument fourni, utiliser $HOME
         target = getenv("HOME");
         if (target == NULL) {
-            write(STDERR_FILENO, "cd: HOME non défini\n", 20);
+            print("cd: HOME non défini\n", STDERR_FILENO);
             return 1;
         }
     }
     else if (strcmp(args[1], "-") == 0) {
         // Argument "-", revenir au répertoire précédent
         if (strlen(previous_dir) == 0) {
-            write(STDERR_FILENO, "cd: répertoire précédent non défini\n", 36);
+            print("cd: répertoire précédent non défini\n", STDERR_FILENO);
             return 1;
         }
         target = previous_dir;

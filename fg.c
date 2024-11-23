@@ -10,6 +10,7 @@ typedef struct {
 } Job;
 
 
+void print(char* string , int sortie);
 extern Job jobs[];
 extern int job_count;
 
@@ -26,7 +27,6 @@ void fg_command(int job_id) {
         }
         // Retirer le job de la liste si nécessaire
     } else {
-        const char *msg = "fg: job inexistant\n";
-        write(STDERR_FILENO, msg, strlen(msg));
+        print("fg: job inexistant\n", STDERR_FILENO);
     }
 }

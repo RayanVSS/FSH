@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <string.h>
 
+void print(char* string , int sortie);
+
 int execute_kill(pid_t pid, int signal) {
     if (kill(pid, signal) == -1) {
         perror("kill");
@@ -12,7 +14,7 @@ int execute_kill(pid_t pid, int signal) {
     }
     char buffer[120];
     snprintf(buffer, sizeof(buffer), "fsh: kill: le processus %ld a été tué\n", (long)pid);
-    write(STDOUT_FILENO, buffer, strlen(buffer));
+    print(buffer, STDOUT_FILENO);
     return 0;
 }
 
