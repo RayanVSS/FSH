@@ -7,6 +7,8 @@
 #include <linux/limits.h>
 #include <errno.h>
 
+void print(char* string , int sortie);
+
 int is_executable(const char *path) {
     struct stat sb;
     return (stat(path, &sb) == 0 && sb.st_mode & S_IXUSR) ? 1 : 0;
@@ -15,8 +17,8 @@ int is_executable(const char *path) {
 // commandes internes
 void list_internal_commands(char *internal_commands[]) {
     for (int i = 0; internal_commands[i] != NULL; i++) {
-        write(STDOUT_FILENO, internal_commands[i], strlen(internal_commands[i]));
-        write(STDOUT_FILENO, "\n", 1);
+        print(internal_commands[i], STDOUT_FILENO);
+        print("\n", STDOUT_FILENO);
     }
 }
 

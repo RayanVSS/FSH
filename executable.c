@@ -10,7 +10,7 @@
  */
 
 struct stat *path_stat;
-void print(FILE *fd ,char *str);
+void print(char* string , int sortie);
 
 char *concat(char *s1, char *s2){
     char *result = malloc(strlen(s1)+strlen(s2)+1);
@@ -73,10 +73,9 @@ int execute_external_command(char **args) {
     } else if (WIFSIGNALED(status)) {
             status = 128 + WTERMSIG(status);
     } else {
-        const char *msg = "fsh: commande non reconnue: ";
-        write(STDERR_FILENO, msg, strlen(msg));
-        write(STDERR_FILENO, args[0], strlen(args[0]));
-        write(STDERR_FILENO, "\n", 1);
+        print(stderr, "fsh: commande non reconnue: ");
+        print(stderr, args[0]);
+        print(stderr, "\n");
         status = 1; // Erreur générale
     }
     return status;

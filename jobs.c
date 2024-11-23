@@ -10,6 +10,7 @@ typedef struct {
 
 #define MAX_JOBS 100
 
+void print(char* string , int sortie);
 Job jobs[MAX_JOBS];
 int job_count = 0;
 
@@ -25,6 +26,6 @@ void jobs_command() {
     char buffer[512];
     for (int i = 0; i < job_count; i++) {
         int len = snprintf(buffer, sizeof(buffer), "[%d] %d %s\n", i + 1, jobs[i].pid, jobs[i].command);
-        write(STDOUT_FILENO, buffer, len);
+        print(buffer, STDOUT_FILENO);
     }
 }

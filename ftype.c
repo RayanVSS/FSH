@@ -10,6 +10,9 @@
  * @param ref Le chemin vers le fichier de référence.
  * @return int Retourne 0 en cas de succès, 1 en cas d'échec.
  */
+
+void print(char* string , int sortie);
+
 int execute_ftype(char **args) {
     const char *ref = args[1];
     struct stat st;
@@ -36,7 +39,7 @@ int execute_ftype(char **args) {
     }
 
     // Écrit le type du fichier dans stdout
-    write(STDOUT_FILENO, type, strlen(type));
+    print(type, STDOUT_FILENO);
     return 0;
 }
 

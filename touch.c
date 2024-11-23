@@ -10,12 +10,12 @@
  * @param argv Liste des arguments
  * @return int Retourne 0 en cas de succès, 1 en cas d'échec.
  */
+void print(char* string , int sortie);
 
 int execute_touch(int argc, char *argv[]) {
     // Vérifie s'il y a au moins un fichier en argument
     if (argc < 2) {
-        const char *msg = "Mauvaise utilisation, merci de respecter : touch <file1> [<file2> ...]\n";
-        write(STDERR_FILENO, msg, strlen(msg));
+        print("Mauvaise utilisation, merci de respecter : touch <file1> [<file2> ...]\n", STDERR_FILENO);
         return 1;
     }
 
@@ -27,17 +27,15 @@ int execute_touch(int argc, char *argv[]) {
         if (fd == -1) {
             // Vérifie si le fichier existe déjà
             if (errno == EEXIST) {
-                const char *exist_msg = "Le fichier '";
-                const char *exist_end = "' existe déjà, il n'a pas été recréé.\n";
-                write(STDOUT_FILENO, exist_msg, strlen(exist_msg));
-                write(STDOUT_FILENO, filename, strlen(filename));
-                write(STDOUT_FILENO, exist_end, strlen(exist_end));
+                print("Le fichier '", STDOUT_FILENO);
+                print(filename, STDOUT_FILENO);
+                print("' existe déjà, il n'a pas été recréé.\n", STDOUT_FILENO);
             } else {
                 // Affiche une erreur générique si autre problème
                 const char *error_msg = "Erreur lors de la création du fichier : ";
-                write(STDERR_FILENO, error_msg, strlen(error_msg));
-                write(STDERR_FILENO, filename, strlen(filename));
-                write(STDERR_FILENO, "\n", 1);
+                print("Erreur lors de la création du fichier : ", STDERR_FILENO);
+                print(strerror(errno), STDERR_FILENO);
+                print("\n", STDERR_FILENO);
             }
             continue; // Passe au fichier suivant sans interrompre la boucle
         }

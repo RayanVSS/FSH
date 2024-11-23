@@ -42,14 +42,18 @@ int execute_compgen(const char *internal_commands[], int argc, char **argv);
 int execute_external_command(char **args);
 
 
+void print(const char* string , int sortie){
+    write(sortie,string,strlen(string));
+}
+
 // Fonction pour afficher le prompt
 void afficher_prompt(int last_status, char *buffer, size_t size) {
     char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
         const char *prefix = "getcwd: ";
-        write(STDERR_FILENO, prefix, strlen(prefix));
-        write(STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
-        write(STDERR_FILENO, "\n", 1);
+        print(prefix,STDERR_FILENO);
+        print(strerror(errno),STDERR_FILENO);
+        print("\n",STDERR_FILENO);
         strcpy(cwd, "?");
     }
 
@@ -63,7 +67,7 @@ void afficher_prompt(int last_status, char *buffer, size_t size) {
         strcpy(status_str, "SIG");
     } else {
         snprintf(status_str, sizeof(status_str), "%d", last_status);
-    }
+    }   
 
     // tronquer 
     size_t max_length = 27;
@@ -121,12 +125,11 @@ int execute_history() {
             char buffer[1024];
             int len = snprintf(buffer, sizeof(buffer), "%d  %s\n", i + history_base, the_list[i]->line);
             if (len > 0) {
-                write(STDOUT_FILENO, buffer, len);
+                print(buffer, STDOUT_FILENO);
             }
         }
     } else {
-        const char *msg = "Aucune commande dans l'historique.\n";
-        write(STDERR_FILENO, msg, strlen(msg));
+        print("Aucune commande dans l'historique.\n", STDOUT_FILENO);
         return 1;
     }
     return 0; // Retourne 0 pour indiquer un succès
@@ -137,6 +140,10 @@ int execute_commande(char **cmd) {
     int redirection = hasredirection(cmd);
     if (redirection != -1) {
         last_status = execute_redirection(cmd, redirection);
+    }
+    else if (strcmp(cmd[0],"for")==0){
+        //last_status = execute_for(cmd);
+        last_status = 0;
     }
     else if (strcmp(cmd[0], "pwd") == 0) { // Comparer avec "pwd"
         last_status = execute_pwd(); // Appeler execute_pwd et mettre à jour le statut
@@ -166,15 +173,13 @@ char **argument(char *line, int *num_tokens) {
     int position = 0;
     char **tokens = malloc(bufsize * sizeof(char*));
     if (!tokens) {
-        const char *msg = "fsh: allocation error\n";
-        write(STDERR_FILENO, msg, strlen(msg));
+        print("fsh: allocation error\n", STDERR_FILENO);
         exit(EXIT_FAILURE);
     }
 
     char *token = malloc(strlen(line) + 1);
     if (!token) {
-        const char *msg = "fsh: allocation error\n";
-        write(STDERR_FILENO, msg, strlen(msg));
+        print("fsh: allocation error\n", STDERR_FILENO);
         exit(EXIT_FAILURE);
     }
     int tok_pos = 0;
@@ -199,8 +204,7 @@ char **argument(char *line, int *num_tokens) {
                     bufsize += 64;
                     tokens = realloc(tokens, bufsize * sizeof(char*));
                     if (!tokens) {
-                        const char *msg = "fsh: allocation error\n";
-                        write(STDERR_FILENO, msg, strlen(msg));
+                        print("fsh: allocation error\n", STDERR_FILENO);
                         exit(EXIT_FAILURE);
                     }
                 }
@@ -246,7 +250,7 @@ int main() {
         ligne = readline(prompt);
 
         if (!ligne) { // EOF (Ctrl-D)
-            write(STDERR_FILENO, "\n", 1);
+            print("\n", STDOUT_FILENO);
             break;
         }
 
@@ -257,10 +261,9 @@ int main() {
             // Copier la ligne pour le traitement (strtok modifie la chaîne)
             char *line_copy = strdup(ligne);
             if (!line_copy) {
-                const char *prefix = "strdup: ";
-                write(STDERR_FILENO, prefix, strlen(prefix));
-                write(STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
-                write(STDERR_FILENO, "\n", 1);
+                print("strdup: ", STDERR_FILENO);
+                print(strerror(errno), STDERR_FILENO);
+                print("\n", STDERR_FILENO);
                 free(ligne);
                 continue;
             }
@@ -271,7 +274,7 @@ int main() {
 
             char **commande = malloc(64*sizeof(char*));
             if(commande==NULL){
-                write(STDERR_FILENO, "Allocation error\n", 17);
+                print("fsh: Allocation error\n", STDERR_FILENO);
                 free(tokens);
                 free(line_copy);
                 free(ligne);
@@ -285,7 +288,7 @@ int main() {
             // Boucle pour traiter les tokens
 
             while (tokens[x]!=NULL){
-                if (x==0 && strcmp(tokens[x], "exit") == 0) { // Comparer avec "exit"
+                if (y==0 && strcmp(tokens[x], "exit") == 0) { // Comparer avec "exit"
                     int exit_val = (tokens[x+1] != NULL)  ? atoi(tokens[x+1]) : last_status; // Obtenir le code de sortie
                     free(tokens);
                     free(line_copy);
@@ -317,6 +320,19 @@ int main() {
                         }
                         y=0;
                     }
+                }
+                else if (strcmp(tokens[x],"for")==0){
+                    while (tokens[x]!=NULL){
+                        commande[y]=tokens[x];
+                        y++;
+                        if(strcmp(tokens[x],"}")==0){
+                            break;
+                        }
+                        x++;
+                    }
+                    commande[y]=NULL;
+                    //last_status=execute_for(commande);
+                    y=0;
                 }
                 else if (strcmp(tokens[x],"&&")==0){
                     commande[y]=NULL;

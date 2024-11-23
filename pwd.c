@@ -11,13 +11,16 @@
  *
  * @return int Retourne 0 en cas de succès, 1 en cas d'échec.
  */
+
+void print(char* string , int sortie);
+
 int execute_pwd() {
     char cwd[PATH_MAX]; // Buffer pour stocker le répertoire courant
 
     // Obtenir le répertoire de travail actuel
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
-        write(STDOUT_FILENO, cwd, strlen(cwd));
-        write(STDOUT_FILENO, "\n", 1);
+        print(cwd, STDOUT_FILENO);
+        print("\n", STDOUT_FILENO);
         return 0;            
     } else {
         perror("fsh: pwd");

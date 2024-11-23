@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void print(char* string , int sortie);
 
 int execute_cat(char **args) {
     if (strlen(args) < 2) { //Vérifier si le nombre de fichiers est inférieur à 2
-        print(stderr, "cat: Aucun fichier passé en argument \n");
+        print("cat: Aucun fichier passé en argument \n", stderr);
         return 1;
     }
     int error = 0;
@@ -12,7 +13,7 @@ int execute_cat(char **args) {
     while (args[i]!=NULL){ //Parcourir les fichiers
         FILE *file = fopen(args[i], "r");  //Ouvrir le fichier en mode lecture
         if (file == NULL) { //Vérifier si le fichier est ouvert
-            print(stderr,"Erreur lors de l'ouverture du fichier \n");
+            print("Erreur lors de l'ouverture du fichier \n", stderr);
             error = 1;
             continue;
         }
@@ -25,7 +26,7 @@ int execute_cat(char **args) {
         }
 
         if (ferror(file)) {//Vérifier si une erreur s'est produite lors de la lecture
-            print(stderr,"Erreur lors de la lecture du fichier \n");
+            print("Erreur lors de la lecture du fichier \n",stderr);
             fclose(file);
             error = 1;
             continue;

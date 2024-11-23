@@ -11,6 +11,7 @@ typedef struct {
 
 extern Job jobs[];
 extern int job_count;
+void print(char* string , int sortie);
 
 void bg_command(int job_id) {
     if (job_id > 0 && job_id <= job_count) {
@@ -19,7 +20,6 @@ void bg_command(int job_id) {
             perror("bg");
         }
     } else {
-        const char *msg = "bg: job inexistant\n";
-        write(STDERR_FILENO, msg, strlen(msg));
+        print("bg: job inexistant\n", STDERR_FILENO);
     }
 }

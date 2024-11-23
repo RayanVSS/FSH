@@ -9,6 +9,9 @@
  * @param argc Nombre d'arguments.
  * @param argv Liste des arguments.
  */
+
+void print(char* string , int sortie);
+
 void echo_command(int argc, char *argv[]) {
     int is_n = 1; // Par défaut, ajoute un saut de ligne
     int i = 1;
@@ -29,11 +32,10 @@ void echo_command(int argc, char *argv[]) {
         }
 
         // Écrit l'argument dans stdout
-        write(STDOUT_FILENO, argv[i], strlen(argv[i]));
-
+        print(argv[i], STDOUT_FILENO);
         // Ajoute un espace entre les arguments, sauf après le dernier
         if (i < argc - 1) {
-            write(STDOUT_FILENO, " ", 1);
+            print(" ", STDOUT_FILENO);
         }
     }
 
@@ -41,6 +43,6 @@ void echo_command(int argc, char *argv[]) {
     // - "-n" est utilisé
     // - "\c" a été rencontré
     if (is_n && !suppress_output) {
-        write(STDOUT_FILENO, "\n", 1);
+        print("\n", STDOUT_FILENO);
     }
 }
