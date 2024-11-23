@@ -16,18 +16,18 @@ const char *internal_commands[] = {
      "pwd", "cd", "clear", "history", "exit", "compgen","kill","ftype", NULL
 };
 
-//Commandes ici
-
 // Foncctions pour gérer les commandes internes
 int execute_pwd();
-// void execute_ls(char **args);
 int execute_cd(char **args);
 void execute_clear(); 
 int execute_kill(pid_t pid, int signal);
 int execute_history();
-// int execute_man(char **args); 
-// int execute_cat(char **args);
 int execute_ftype(char **args);
+int execute_bg(char **args);
+int execute_jobs(char **args);
+
+// pour if
+int execute_if(char **cmd);
 
 // Fonctions pour gérer les redirections
 int hasredirection(char** cmd);
@@ -138,21 +138,30 @@ int execute_commande(char **cmd) {
     if (redirection != -1) {
         last_status = execute_redirection(cmd, redirection);
     }
-    else if (strcmp(cmd[0], "pwd") == 0) { // Comparer avec "pwd"
-        last_status = execute_pwd(); // Appeler execute_pwd et mettre à jour le statut
+    else if (strcmp(cmd[0], "if") == 0) { 
+        last_status = execute_if(cmd);
     }
-    else if (strcmp(cmd[0], "cd") == 0) { // Comparer avec "cd"
-        last_status = execute_cd(cmd); // Appeler execute_cd et mettre à jour le statut
+    else if (strcmp(cmd[0], "pwd") == 0) { 
+        last_status = execute_pwd(); 
     }
-    else if (strcmp(cmd[0], "clear") == 0) { // Comparer avec "clear"
-        execute_clear(cmd); // Appeler execute_clear
-        last_status = 0;       // Mettre à jour le statut
+    else if (strcmp(cmd[0], "cd") == 0) { 
+        last_status = execute_cd(cmd); 
+    }
+    else if (strcmp(cmd[0], "clear") == 0) {
+        execute_clear(cmd); 
+        last_status = 0;     
     }
     else if (strcmp(cmd[0], "history") == 0) {            
         last_status = execute_history();
     }
     else if (strcmp(cmd[0], "ftype") == 0) {
         last_status = execute_ftype(cmd);
+    }
+    else if (strcmp(cmd[0], "bg") == 0) {
+        last_status = execute_bg(cmd);
+    }
+    else if (strcmp(cmd[0], "jobs") == 0) {
+        last_status = execute_jobs(cmd);
     }
     else {
         last_status = execute_external_command(cmd);
@@ -223,6 +232,13 @@ char **argument(char *line, int *num_tokens) {
     return tokens;
 }
 
+// gestion du signal 
+void handle_sigint() {
+    write(STDOUT_FILENO, "\n", 1);
+    rl_on_new_line();
+    rl_replace_line("", 0);
+    rl_redisplay();
+}
 
 int main() {
     char *ligne;
@@ -230,10 +246,9 @@ int main() {
     char prompt[1024]; // Buffer pour le prompt
     rl_outstream = stderr;
 
-
-    // Ignorer SIGINT et SIGTERM dans le shell principal
-    signal(SIGINT, SIG_IGN);
-    signal(SIGTERM, SIG_IGN);
+    // gestionnaires de signaux
+    signal(SIGINT, handle_sigint);
+    signal(SIGTSTP, SIG_IGN);
 
     rl_attempted_completion_function = completion; // pour Tab
 
@@ -359,37 +374,4 @@ int main() {
         free(ligne);
     }
     return last_status;
-
-    /*
-                    else if (strncmp(tokens[0], "./", 2) == 0) {
-                        // Essayer d'exécuter une commande externe
-                        last_status = execute_external_command(tokens);
-
-                        // Vérifier le statut de retour et ajuster si nécessaire
-                        if (WIFEXITED(last_status)) {
-                            last_status = WEXITSTATUS(last_status);
-                        } else if (WIFSIGNALED(last_status)) {
-                            last_status = 128 + WTERMSIG(last_status);
-                        } else {
-                            last_status = 1; // Erreur générale
-                        }
-                    }
-                    else {
-                        last_status = execute_external_command(tokens);
-
-                    // Vérifier le statut de retour et ajuster si nécessaire
-                    if (WIFEXITED(last_status)) {
-                        last_status = WEXITSTATUS(last_status);
-                    } else if (WIFSIGNALED(last_status)) {
-                        last_status = 128 + WTERMSIG(last_status);
-                    } else {
-                        const char *msg = "fsh: commande non reconnue: ";
-                        write(STDERR_FILENO, msg, strlen(msg));
-                        write(STDERR_FILENO, tokens[0], strlen(tokens[0]));
-                        write(STDERR_FILENO, "\n", 1);
-                        last_status = 1; // Erreur générale
-                    }
-                    }
-
-    */
 }   

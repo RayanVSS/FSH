@@ -12,7 +12,7 @@ typedef struct {
 extern Job jobs[];
 extern int job_count;
 
-void bg_command(int job_id) {
+void execute_bg(int job_id) {
     if (job_id > 0 && job_id <= job_count) {
         pid_t pid = jobs[job_id - 1].pid;
         if (kill(pid, SIGCONT) == -1) {
