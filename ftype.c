@@ -11,7 +11,7 @@
  * @return int Retourne 0 en cas de succès, 1 en cas d'échec.
  */
 
-void print(char* string , int sortie);
+void print(const char* string , int sortie);
 
 int execute_ftype(char **args) {
     const char *ref = args[1];
