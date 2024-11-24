@@ -9,9 +9,8 @@ int execute_cat(char **args) {
         return 1;
     }
     int error = 0;
-    int i = 1;
-    while (args[i]!=NULL){ //Parcourir les fichiers
-        FILE *file = fopen(args[i], "r");  //Ouvrir le fichier en mode lecture
+    for (int i = 0; i < nb; i++) { //Parcourir les fichiers
+        FILE *file = fopen(args[*pos], "r");  //Ouvrir le fichier en mode lecture
         if (file == NULL) { //Vérifier si le fichier est ouvert
             print("Erreur lors de l'ouverture du fichier \n", stderr);
             error = 1;
@@ -33,7 +32,7 @@ int execute_cat(char **args) {
         }
         
         fclose(file);
-        i++;
+        *pos = *pos + 1;
     }
     return error;
 }

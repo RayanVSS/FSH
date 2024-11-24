@@ -1,9 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#include <fcntl.h>
+
+typedef struct {
+    char *string;
+    int sortie;
+} print;
+
+ execute_redirection(char **args, int *pos) {
+    int error = 0;
+    int i = *pos;
 
 
 int execute_commande(char **cmd); 
