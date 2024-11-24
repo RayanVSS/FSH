@@ -10,7 +10,7 @@
  * @param argv Liste des arguments
  * @return int Retourne 0 en cas de succès, 1 en cas d'échec.
  */
-void print(char* string , int sortie);
+void print(const char* string , int sortie);
 
 int execute_touch(int argc, char *argv[]) {
     // Vérifie s'il y a au moins un fichier en argument
@@ -32,7 +32,6 @@ int execute_touch(int argc, char *argv[]) {
                 print("' existe déjà, il n'a pas été recréé.\n", STDOUT_FILENO);
             } else {
                 // Affiche une erreur générique si autre problème
-                const char *error_msg = "Erreur lors de la création du fichier : ";
                 print("Erreur lors de la création du fichier : ", STDERR_FILENO);
                 print(strerror(errno), STDERR_FILENO);
                 print("\n", STDERR_FILENO);
