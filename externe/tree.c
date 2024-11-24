@@ -70,7 +70,7 @@ void print_symlink(const char *path) {
 // parcourir les répertoires
 void tree(const char *path, int depth, int last[], tree_options options) {
     if (depth >= 100) {
-        fprintf(stderr, "Erreur: Profondeur maximale dépassée pour %s\n", path);
+        print(stderr, "Erreur: Profondeur maximale dépassée pour %s\n", path);
         return;
     }
 
@@ -87,7 +87,7 @@ void tree(const char *path, int depth, int last[], tree_options options) {
 
 
     if (!(dir = opendir(path))) {
-        fprintf(stderr, "Erreur: Impossible d'ouvrir le répertoire %s: %s\n", path, strerror(errno));
+        print(stderr, "Erreur: Impossible d'ouvrir le répertoire %s: %s\n", path, strerror(errno));
         return;
     }
 
@@ -112,13 +112,13 @@ void tree(const char *path, int depth, int last[], tree_options options) {
         current++;
         // chemin complet
         if (snprintf(fullpath, sizeof(fullpath), "%s/%s", path, entry->d_name) >= (int)sizeof(fullpath)) {
-            fprintf(stderr, "Erreur: Chemin trop long pour %s/%s\n", path, entry->d_name);
+            print(stderr, "Erreur: Chemin trop long pour %s/%s\n", path, entry->d_name);
             continue;
         }
 
         // informations sur le fichier
         if (lstat(fullpath, &st) == -1) {
-            fprintf(stderr, "Erreur: Impossible de stat %s: %s\n", fullpath, strerror(errno));
+            print(stderr, "Erreur: Impossible de stat %s: %s\n", fullpath, strerror(errno));
             continue;
         }
 
@@ -204,13 +204,13 @@ int execute_tree(int argc, char *argv[]) {
                         else if (i + 1 < argc) {
                             options.max_depth = atoi(argv[++i]);
                         } else {
-                            fprintf(stderr, "Erreur: L'option -L nécessite un argument.\n");
+                            print(stderr, "Erreur: L'option -L nécessite un argument.\n");
                             print_help();
                             return EXIT_FAILURE;
                         }
 
                         if (options.max_depth < 0) {
-                            fprintf(stderr, "Erreur: Niveau de profondeur invalide: %d\n", options.max_depth);
+                            print(stderr, "Erreur: Niveau de profondeur invalide: %d\n", options.max_depth);
                             return EXIT_FAILURE;
                         }
                         break;
@@ -221,7 +221,7 @@ int execute_tree(int argc, char *argv[]) {
                         print_help();
                         return EXIT_SUCCESS;
                     default:
-                        fprintf(stderr, "Erreur: Option inconnue -- '%c'\n", opt);
+                        print(stderr, "Erreur: Option inconnue -- '%c'\n", opt);
                         print_help();
                         return EXIT_FAILURE;
                 }
@@ -233,7 +233,7 @@ int execute_tree(int argc, char *argv[]) {
                 path = argv[i];
             }
             else {
-                fprintf(stderr, "Erreur: Plusieurs chemins fournis. Veuillez spécifier un seul chemin.\n");
+                print(stderr, "Erreur: Plusieurs chemins fournis. Veuillez spécifier un seul chemin.\n");
                 print_help();
                 return EXIT_FAILURE;
             }
@@ -247,7 +247,7 @@ int execute_tree(int argc, char *argv[]) {
 
     // Vérifier si le chemin est accessible
     if (!is_accessible(path)) {
-        fprintf(stderr, "Erreur: %s n'est pas un répertoire accessible.\n", path);
+        print(stderr, "Erreur: %s n'est pas un répertoire accessible.\n", path);
         return EXIT_FAILURE;
     }
 
