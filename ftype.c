@@ -2,6 +2,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <errno.h>
+#include <stdio.h>
 
 /**
  * Cette fonction affiche le type du fichier de référence REF.
@@ -9,15 +10,17 @@
  * @param ref Le chemin vers le fichier de référence.
  * @return int Retourne 0 en cas de succès, 1 en cas d'échec.
  */
-int execute_ftype(const char *ref) {
+
+void print(const char* string , int sortie);
+
+int execute_ftype(char **args) {
+    const char *ref = args[1];
     struct stat st;
+
 
     // Vérification du fichier grâce à un lstat
     if (lstat(ref, &st) == -1) {
-        const char *error_msg = "Problème avec le fichier : ";
-        write(STDERR_FILENO, error_msg, strlen(error_msg));
-        write(STDERR_FILENO, ref, strlen(ref));
-        write(STDERR_FILENO, "\n", 1);
+        perror("lstat :");
         return 1;
     }
 
@@ -36,6 +39,7 @@ int execute_ftype(const char *ref) {
     }
 
     // Écrit le type du fichier dans stdout
-    write(STDOUT_FILENO, type, strlen(type));
+    print(type, STDOUT_FILENO);
     return 0;
 }
+

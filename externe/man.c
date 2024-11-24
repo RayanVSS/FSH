@@ -7,9 +7,11 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+print(char* string , int sortie);
+
 int execute_man(char **args) {
     if (args[1] == NULL) {
-        write(STDERR_FILENO, "fsh: man: aucun argument fourni.\n", 33);
+        print("fsh: man: aucun argument fourni.\n", STDERR_FILENO);
         return 1;
     }
 
@@ -62,7 +64,7 @@ int execute_man(char **args) {
 
     // ecrire dans le fichier 
     if (content) {
-        write(temp_fd, content, strlen(content));
+        print(content, temp_fd);
     }
 
     //début pour lecture
@@ -74,7 +76,7 @@ int execute_man(char **args) {
     int line_count = 0;
     while ((bytes_read = read(temp_fd, buffer, sizeof(buffer))) > 0) {
         for (int i = 0; i < bytes_read; i++) {
-            write(STDOUT_FILENO, &buffer[i], 1);
+            print(&buffer[i], STDOUT_FILENO);
             if (buffer[i] == '\n') {
                 line_count++;
             }
