@@ -23,8 +23,6 @@ void execute_clear();
 int execute_kill(pid_t pid, int signal);
 int execute_history();
 int execute_ftype(char **args);
-int execute_bg(char **args);
-int execute_jobs(char **args);
 
 // pour if
 int execute_if(char **cmd);
@@ -146,14 +144,14 @@ int execute_commande(char **cmd, int status) {
     if (strcmp(cmd[0],"for")==0){
         last_status = execute_for(cmd);
     }
+    else if (strcmp(cmd[0], "if") == 0) { 
+        last_status = execute_if(cmd);
+    }
     else if (pipeline != 0) {
         last_status = execute_pipeline(cmd, pipeline+1);
     }
     else if (redirection != -1) {
         last_status = execute_redirection(cmd, redirection);
-    }
-    else if (strcmp(cmd[0], "if") == 0) { 
-        last_status = execute_if(cmd);
     }
     else if (strcmp(cmd[0], "pwd") == 0) { 
         last_status = execute_pwd(); 
@@ -170,12 +168,6 @@ int execute_commande(char **cmd, int status) {
     }
     else if (strcmp(cmd[0], "ftype") == 0) {
         last_status = execute_ftype(cmd);
-    }
-    else if (strcmp(cmd[0], "bg") == 0) {
-        last_status = execute_bg(cmd);
-    }
-    else if (strcmp(cmd[0], "jobs") == 0) {
-        last_status = execute_jobs(cmd);
     }
     else if (strcmp(cmd[0], "exit") == 0) { // Comparer avec "exit"
         int exit_val = (cmd[1] != NULL)  ? atoi(cmd[1]) : last_status; // Obtenir le code de sortie

@@ -6,7 +6,7 @@
 #include <errno.h>
 
 // Prototypes des fonctions existantes
-extern int execute_commande(char **cmd);
+extern int execute_all_commands(char **cmds,int status);
 extern char **argument(char *line, int *num_tokens);
 
 
@@ -139,7 +139,7 @@ int execute_if(char **cmd) {
         close(pipefd[0]); // Fermer le côté lecture du pipe
 
         // Exécuter la commande TEST
-        int test_status = execute_commande(test_cmd);
+        int test_status = execute_all_commands(test_cmd,0);
 
         // Écrire le statut dans le pipe
         if (write(pipefd[1], &test_status, sizeof(test_status)) == -1) {
@@ -219,7 +219,7 @@ int execute_if(char **cmd) {
                 return 1;
             }
             
-            int if_status = execute_commande(if_block);
+            int if_status = execute_all_commands(if_block,0);
 
             // vide la mémoire
             for (int i = 0; if_block[i] != NULL; i++) {
@@ -235,7 +235,7 @@ int execute_if(char **cmd) {
                 return 1;
             }
 
-            int else_status = execute_commande(else_block);
+            int else_status = execute_all_commands(else_block,0);
 
             // vide la mémoire
             for (int i = 0; else_block[i] != NULL; i++) {

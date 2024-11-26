@@ -5,7 +5,7 @@ LIBS = -lreadline -lncurses
 # Cible par défaut : créer l'exécutable fsh
 all: fsh
 
-fsh: main.o  pwd.o cd.o clear.o  echo.o ftype.o touch.o executable.o compgen.o kill.o redirection.o pipeline.o for.o if.o 
+fsh: main.o  pwd.o cd.o clear.o  echo.o ftype.o touch.o executable.o compgen.o kill.o redirection.o pipeline.o for.o if.o
 	$(CC) $(CFLAGS) -o fsh main.o pwd.o cd.o clear.o echo.o ftype.o touch.o executable.o compgen.o kill.o redirection.o pipeline.o for.o if.o $(LIBS)
 
 main.o: main.c

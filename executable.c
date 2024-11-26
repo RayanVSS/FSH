@@ -51,8 +51,16 @@ int execute_external_command(char **args) {
         signal(SIGQUIT, SIG_DFL);
 
         if (execvp(args[0], args) == -1) {
-            perror("fsh");
-            exit(EXIT_FAILURE);
+            if(access(args[0], X_OK) == -1){
+                print("fsh: ", STDERR_FILENO);
+                print(args[0], STDERR_FILENO);
+                print(": commande introuvable\n", STDERR_FILENO);
+                exit(EXIT_FAILURE);
+            }
+            else {
+                perror("fsh");
+                exit(EXIT_FAILURE);
+            }
         }
     } else if (pid < 0) {       
         perror("fsh");
@@ -78,13 +86,8 @@ int execute_external_command(char **args) {
         status = WEXITSTATUS(status);
     } else if (WIFSIGNALED(status)) {
         status = 128 + WTERMSIG(status);
-    } else if (WIFSTOPPED(status)) {
+    } else  {
         status = 148; 
-    } else {
-        print("fsh: commande non reconnue: ", STDERR_FILENO);
-        print(args[0], STDERR_FILENO);
-        print("\n", STDERR_FILENO);
-        status = 1; // Erreur générale
     }
     return status;
 }
