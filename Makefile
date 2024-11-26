@@ -5,8 +5,8 @@ LIBS = -lreadline -lncurses
 # Cible par défaut : créer l'exécutable fsh
 all: fsh
 
-fsh: main.o  pwd.o cd.o clear.o  echo.o ftype.o touch.o executable.o compgen.o kill.o redirection.o pipeline.o
-	$(CC) $(CFLAGS) -o fsh main.o pwd.o cd.o clear.o echo.o ftype.o touch.o executable.o compgen.o kill.o redirection.o pipeline.o $(LIBS)
+fsh: main.o  pwd.o cd.o clear.o  echo.o ftype.o touch.o executable.o compgen.o kill.o redirection.o pipeline.o for.o if.o
+	$(CC) $(CFLAGS) -o fsh main.o pwd.o cd.o clear.o echo.o ftype.o touch.o executable.o compgen.o kill.o redirection.o pipeline.o for.o if.o $(LIBS)
 
 main.o: main.c
 	$(CC) $(CFLAGS) -c main.c
@@ -58,6 +58,12 @@ redirection.o: redirection.c
 
 pipeline.o: pipeline.c
 	$(CC) $(CFLAGS) -c pipeline.c
+
+if.o: if.c
+	$(CC) $(CFLAGS) -c if.c
+
+for.o: for.c
+	$(CC) $(CFLAGS) -c for.c
 
 clean:
 	rm -f *.o fsh

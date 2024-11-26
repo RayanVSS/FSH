@@ -22,7 +22,7 @@ void add_job(pid_t pid, const char *command) {
     }
 }
 
-void jobs_command() {
+void execute_jobs() {
     char buffer[512];
     for (int i = 0; i < job_count; i++) {
         int len = snprintf(buffer, sizeof(buffer), "[%d] %d %s\n", i + 1, jobs[i].pid, jobs[i].command);

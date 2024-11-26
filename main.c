@@ -16,18 +16,16 @@ const char *internal_commands[] = {
      "pwd", "cd", "clear", "history", "exit", "compgen","kill","ftype", NULL
 };
 
-//Commandes ici
-
 // Foncctions pour gérer les commandes internes
 int execute_pwd();
-// void execute_ls(char **args);
 int execute_cd(char **args);
 void execute_clear(); 
 int execute_kill(pid_t pid, int signal);
 int execute_history();
-// int execute_man(char **args); 
-// int execute_cat(char **args);
 int execute_ftype(char **args);
+
+// pour if
+int execute_if(char **cmd);
 
 // Fonctions pour gérer les redirections
 int hasredirection(char** cmd);
@@ -35,6 +33,10 @@ int execute_redirection(char **args, int pos);
 
 // Fonctions pour gérer les pipelines
 int execute_pipeline(char **commande, int pipeline);
+int haspipeline(char **cmd);
+
+// Fonctions pour gérer les for 
+int execute_for(char **cmd);
 
 // Fonctions pour gérer les commandes externes
 int execute_executable(char **args);
@@ -135,25 +137,31 @@ int execute_history() {
     return 0; // Retourne 0 pour indiquer un succès
 }
 
-int execute_commande(char **cmd) {
-    int last_status = 0;
+int execute_commande(char **cmd, int status) {
+    int last_status = status;
     int redirection = hasredirection(cmd);
-    if (redirection != -1) {
+    int pipeline = haspipeline(cmd);
+    if (strcmp(cmd[0],"for")==0){
+        last_status = execute_for(cmd);
+    }
+    else if (strcmp(cmd[0], "if") == 0) { 
+        last_status = execute_if(cmd);
+    }
+    else if (pipeline != 0) {
+        last_status = execute_pipeline(cmd, pipeline+1);
+    }
+    else if (redirection != -1) {
         last_status = execute_redirection(cmd, redirection);
     }
-    else if (strcmp(cmd[0],"for")==0){
-        //last_status = execute_for(cmd);
-        last_status = 0;
+    else if (strcmp(cmd[0], "pwd") == 0) { 
+        last_status = execute_pwd(); 
     }
-    else if (strcmp(cmd[0], "pwd") == 0) { // Comparer avec "pwd"
-        last_status = execute_pwd(); // Appeler execute_pwd et mettre à jour le statut
+    else if (strcmp(cmd[0], "cd") == 0) { 
+        last_status = execute_cd(cmd); 
     }
-    else if (strcmp(cmd[0], "cd") == 0) { // Comparer avec "cd"
-        last_status = execute_cd(cmd); // Appeler execute_cd et mettre à jour le statut
-    }
-    else if (strcmp(cmd[0], "clear") == 0) { // Comparer avec "clear"
-        execute_clear(cmd); // Appeler execute_clear
-        last_status = 0;       // Mettre à jour le statut
+    else if (strcmp(cmd[0], "clear") == 0) {
+        execute_clear(cmd); 
+        last_status = 0;     
     }
     else if (strcmp(cmd[0], "history") == 0) {            
         last_status = execute_history();
@@ -161,9 +169,91 @@ int execute_commande(char **cmd) {
     else if (strcmp(cmd[0], "ftype") == 0) {
         last_status = execute_ftype(cmd);
     }
+    else if (strcmp(cmd[0], "exit") == 0) { // Comparer avec "exit"
+        int exit_val = (cmd[1] != NULL)  ? atoi(cmd[1]) : last_status; // Obtenir le code de sortie
+        exit(exit_val);
+    }
     else {
         last_status = execute_external_command(cmd);
     }
+    return last_status;
+}
+
+int execute_all_commands(char **cmds,int status) {
+    int last_status = status;
+    char **commande = malloc(64*sizeof(char*));
+    if(commande==NULL){
+        print("fsh: Erreur d'allocation\n", STDERR_FILENO);
+        return 1;
+    }
+    int x=0;
+    int y=0;    
+    int entre_crochet=0;
+
+    // Exécuter les commandes
+    // Boucle pour traiter les tokens
+
+    while (cmds[x]!=NULL){
+        if (strcmp(cmds[x],";")==0 && entre_crochet==0){
+            commande[y]=NULL;
+            if(commande[0]!=NULL && y>0){
+                last_status = execute_commande(commande,last_status);
+                y=0;
+            }
+            else{
+                print("fsh: Erreur de syntaxe\n", STDOUT_FILENO);
+                last_status=1;
+                break;
+            }
+        }
+        else if (strcmp(cmds[x],"&&")==0 && entre_crochet==0){
+            commande[y]=NULL;
+            if(commande[0]!=NULL && y>0){
+                last_status = execute_commande(commande,last_status);
+                if(last_status!=0){
+                    break;
+                }
+                y=0;
+            }
+            else{
+                print("fsh: Erreur de syntaxe\n", STDOUT_FILENO);
+                last_status=1;
+                break;
+                
+            }
+            if(last_status!=0){
+                break;
+            }
+        }
+        else if (strcmp(cmds[x],"{")==0){
+            entre_crochet+=1;
+            commande[y]=cmds[x];
+            y++;
+        }
+        else if(strcmp(cmds[x],"}")==0){
+            entre_crochet-=1;
+            commande[y]=cmds[x];
+            y++;
+            if(cmds[x+1]==NULL){
+                commande[y]=NULL;
+                last_status = execute_commande(commande,last_status);
+                y=0;
+            }
+        }
+        else{
+            commande[y] = cmds[x];
+            if(cmds[x+1]==NULL){
+                commande[y+1]=NULL;
+                last_status = execute_commande(commande,last_status);
+                y=0;
+            }
+            else{
+                y++;
+            }
+        }
+        x++;
+    }
+    free(commande);
     return last_status;
 }
 
@@ -174,12 +264,15 @@ char **argument(char *line, int *num_tokens) {
     char **tokens = malloc(bufsize * sizeof(char*));
     if (!tokens) {
         print("fsh: allocation error\n", STDERR_FILENO);
+        free(tokens);
         exit(EXIT_FAILURE);
     }
 
     char *token = malloc(strlen(line) + 1);
     if (!token) {
         print("fsh: allocation error\n", STDERR_FILENO);
+        free(tokens);
+        free(token);
         exit(EXIT_FAILURE);
     }
     int tok_pos = 0;
@@ -196,6 +289,12 @@ char **argument(char *line, int *num_tokens) {
             if (in_token) {
                 token[tok_pos] = '\0';
                 tokens[position++] = strdup(token);
+                if(!tokens[position-1]){
+                    print("fsh: allocation error\n", STDERR_FILENO);
+                    free(token);
+                    free(tokens);
+                    exit(EXIT_FAILURE);
+                }
                 tok_pos = 0;
                 in_token = 0;
 
@@ -205,6 +304,8 @@ char **argument(char *line, int *num_tokens) {
                     tokens = realloc(tokens, bufsize * sizeof(char*));
                     if (!tokens) {
                         print("fsh: allocation error\n", STDERR_FILENO);
+                        free(token);
+                        free(tokens);
                         exit(EXIT_FAILURE);
                     }
                 }
@@ -227,6 +328,24 @@ char **argument(char *line, int *num_tokens) {
     return tokens;
 }
 
+void free_tokens(char **tokens) {
+    if (tokens) {
+        for (int i = 0; tokens[i] != NULL; i++) {
+            free(tokens[i]);
+        }
+        free(tokens);
+    }
+}
+
+
+
+// gestion du signal 
+void handle_sigint() {
+    write(STDOUT_FILENO, "\n", 1);
+    rl_on_new_line();
+    rl_replace_line("", 0);
+    rl_redisplay();
+}
 
 int main() {
     char *ligne;
@@ -234,10 +353,9 @@ int main() {
     char prompt[1024]; // Buffer pour le prompt
     rl_outstream = stderr;
 
-
-    // Ignorer SIGINT et SIGTERM dans le shell principal
-    signal(SIGINT, SIG_IGN);
-    signal(SIGTERM, SIG_IGN);
+    // gestionnaires de signaux
+    signal(SIGINT, handle_sigint);
+    signal(SIGTSTP, SIG_IGN);
 
     rl_attempted_completion_function = completion; // pour Tab
 
@@ -271,141 +389,19 @@ int main() {
             //decouper les tokens
             int num_tokens = 0;
             char **tokens = argument(line_copy, &num_tokens);
-
-            char **commande = malloc(64*sizeof(char*));
-            if(commande==NULL){
-                print("fsh: Allocation error\n", STDERR_FILENO);
+            if (tokens==NULL) {
+                print("fsh: Erreur d'allocation\n", STDERR_FILENO);
                 free(tokens);
                 free(line_copy);
                 free(ligne);
-                return 1;
+                exit(EXIT_FAILURE);
             }
-            int x=0;
-            int y=0;    
-            int pipeline=0;
-
-            // Exécuter les commandes
-            // Boucle pour traiter les tokens
-
-            while (tokens[x]!=NULL){
-                if (y==0 && strcmp(tokens[x], "exit") == 0) { // Comparer avec "exit"
-                    int exit_val = (tokens[x+1] != NULL)  ? atoi(tokens[x+1]) : last_status; // Obtenir le code de sortie
-                    free(tokens);
-                    free(line_copy);
-                    free(commande);
-                    free(ligne);
-                    exit(exit_val);
-                }
-                else if (strcmp(tokens[x],"|")==0){
-                    pipeline++;
-                    commande[y]="|";
-                    if(strcmp(tokens[x+1], "exit") == 0){
-                        int exit_val = (tokens[x+2] != NULL)  ? atoi(tokens[x+2]) : last_status; // Obtenir le code de sortie
-                        free(tokens);
-                        free(line_copy);
-                        free(commande);
-                        free(ligne);
-                        exit(exit_val);
-                    }
-                    y++;
-                }
-                else if (strcmp(tokens[x],";")==0){
-                    commande[y]=NULL;
-                    if(commande[0]!=NULL){
-                        if(pipeline>0){
-                            last_status = execute_pipeline(commande,pipeline+1);
-                            pipeline=0;
-                        } else {
-                            last_status = execute_commande(commande);
-                        }
-                        y=0;
-                    }
-                }
-                else if (strcmp(tokens[x],"for")==0){
-                    while (tokens[x]!=NULL){
-                        commande[y]=tokens[x];
-                        y++;
-                        if(strcmp(tokens[x],"}")==0){
-                            break;
-                        }
-                        x++;
-                    }
-                    commande[y]=NULL;
-                    //last_status=execute_for(commande);
-                    y=0;
-                }
-                else if (strcmp(tokens[x],"&&")==0){
-                    commande[y]=NULL;
-                    if(commande[0]!=NULL){
-                        if(pipeline>0){
-                            last_status = execute_pipeline(commande,pipeline+1);
-                            pipeline=0;
-                        } else {
-                            last_status = execute_commande(commande);
-                        }
-                        y=0;
-                    }
-                    if(last_status!=0){
-                        break;
-                    }
-                }
-                else{
-                    commande[y]=tokens[x];
-                    if(tokens[x+1]==NULL){
-                        commande[y+1]=NULL;
-                        if(pipeline>0){
-                            last_status = execute_pipeline(commande,pipeline+1);
-                            pipeline=0;
-                        } else {
-                            last_status = execute_commande(commande);
-                        }
-                    }
-                    else{
-                        y++;
-                    }
-                }
-                x++;
-            }
-
-            free(tokens);
+            last_status=execute_all_commands(tokens,last_status);
+            free_tokens(tokens);
             free(line_copy);
-            free(commande);
         }
     
         free(ligne);
     }
     return last_status;
-
-    /*
-                    else if (strncmp(tokens[0], "./", 2) == 0) {
-                        // Essayer d'exécuter une commande externe
-                        last_status = execute_external_command(tokens);
-
-                        // Vérifier le statut de retour et ajuster si nécessaire
-                        if (WIFEXITED(last_status)) {
-                            last_status = WEXITSTATUS(last_status);
-                        } else if (WIFSIGNALED(last_status)) {
-                            last_status = 128 + WTERMSIG(last_status);
-                        } else {
-                            last_status = 1; // Erreur générale
-                        }
-                    }
-                    else {
-                        last_status = execute_external_command(tokens);
-
-                    // Vérifier le statut de retour et ajuster si nécessaire
-                    if (WIFEXITED(last_status)) {
-                        last_status = WEXITSTATUS(last_status);
-                    } else if (WIFSIGNALED(last_status)) {
-                        last_status = 128 + WTERMSIG(last_status);
-                    } else {
-                        const char *msg = "fsh: commande non reconnue: ";
-                        write(STDERR_FILENO, msg, strlen(msg));
-                        write(STDERR_FILENO, tokens[0], strlen(tokens[0]));
-                        write(STDERR_FILENO, "\n", 1);
-                        last_status = 1; // Erreur générale
-                    }
-                    }
-
-    */
 }   

@@ -6,7 +6,7 @@
 #include <fcntl.h>
 
 
-int execute_commande(char **cmd); 
+int execute_commande(char **cmd,int last_status) ; 
 
 int verif_redirection(char **cmd , int pos){
     if (strcmp(cmd[pos], "<") == 0 || strcmp(cmd[pos], ">") == 0 || strcmp(cmd[pos], "2>") == 0 || strcmp(cmd[pos], ">>") == 0 || strcmp(cmd[pos], "2>>") == 0 || strcmp(cmd[pos], ">|") == 0 || strcmp(cmd[pos], "2>|") == 0){
@@ -66,7 +66,7 @@ int execute_redirection (char **tokens , int pos) {
         dup2(fd,fileno(stdin));
         close(fd);
         
-        last_status=execute_commande(cmd);
+        last_status=execute_commande(cmd,last_status);
 
         dup2(stdin_copy,fileno(stdin));
         close(stdin_copy);
@@ -112,7 +112,7 @@ int execute_redirection (char **tokens , int pos) {
         close(fd);
         
         // On execute la commande
-        last_status=execute_commande(cmd);
+        last_status=execute_commande(cmd,last_status);
 
         if (sortie_erreur==1){
             dup2(stderr_copy,fileno(stderr));
