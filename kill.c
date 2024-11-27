@@ -7,8 +7,16 @@
 
 void print(char* string , int sortie);
 
-int execute_kill(pid_t pid, int signal) {
-    if (kill(pid, signal) == -1) {
+int execute_kill(char** arg) {
+    
+    if (arg[1] == NULL) {
+        print("fsh: kill: missing argument\n", STDERR_FILENO);
+        return 1;
+    }
+    pid_t pid = atoi(arg[1]);
+    int signal = (arg[2] != NULL) ? atoi(arg[2]) : SIGTERM;
+
+    if (kill(pid, signal) < 0 ) {
         perror("kill");
         return 1;
     }

@@ -13,16 +13,16 @@
 #include <errno.h> // Ajout pour strerror
 
 const char *internal_commands[] = {
-     "pwd", "cd", "clear", "history", "exit", "compgen","kill","ftype", NULL
+     "pwd", "cd", "clear", "history", "exit","kill", "ftype", NULL
 };
 
 // Foncctions pour gérer les commandes internes
 int execute_pwd();
 int execute_cd(char **args);
 void execute_clear(); 
-int execute_kill(pid_t pid, int signal);
 int execute_history();
 int execute_ftype(char **args);
+int execute_kill(char ** args);
 
 // pour if
 int execute_if(char **cmd);
@@ -40,12 +40,12 @@ int execute_for(char **cmd);
 
 // Fonctions pour gérer les commandes externes
 int execute_executable(char **args);
-int execute_compgen(const char *internal_commands[], int argc, char **argv);
 int execute_external_command(char **args);
 
 
 void print(const char* string , int sortie){
     write(sortie,string,strlen(string));
+    
 }
 
 // Fonction pour afficher le prompt
@@ -168,6 +168,9 @@ int execute_commande(char **cmd, int status) {
     }
     else if (strcmp(cmd[0], "ftype") == 0) {
         last_status = execute_ftype(cmd);
+    }
+    else if (strcmp(cmd[0], "kill") == 0) {
+        last_status = execute_kill(cmd);
     }
     else if (strcmp(cmd[0], "exit") == 0) { // Comparer avec "exit"
         int exit_val = (cmd[1] != NULL)  ? atoi(cmd[1]) : last_status; // Obtenir le code de sortie
