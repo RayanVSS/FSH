@@ -21,7 +21,7 @@ int length(char **cmd) {
 int *pos_indice(char **cmd, char *indice) {
     int *tab = malloc(sizeof(int) * 50);
     if (tab == NULL) {
-        print("fsh: Erreur d'allocation\n", STDOUT_FILENO);
+        print("fsh: for: Erreur d'allocation\n", STDOUT_FILENO);
         return NULL;
     }
     memset(tab, -1, sizeof(int) * 50);
@@ -40,29 +40,29 @@ int *pos_indice(char **cmd, char *indice) {
 int execute_for(char **cmd) {
     int last_status = 0;
 
-    if (length(cmd) < 8) {
-        print("fsh: Erreur de syntaxe\n", STDOUT_FILENO);
+    if (length(cmd) < 6) {
+        print("fsh: for: Erreur de syntaxe\n", STDOUT_FILENO);
         return 1;
     }
 
     char *variable = concat("$", cmd[1]);
 
     if(strcmp(cmd[2],"in")!=0){
-        print("fsh: Erreur de syntaxe\n", STDOUT_FILENO);
+        print("fsh: for: Erreur de syntaxe\n", STDOUT_FILENO);
         return 1;
     }
 
     char *directory = cmd[3];
 
     if(strcmp(cmd[4],"{")!=0){
-        print("fsh: Erreur de syntaxe\n", STDOUT_FILENO);
+        print("fsh: for: Erreur de syntaxe\n", STDOUT_FILENO);
         return 1;
     }
 
     char ** commande = malloc(sizeof(char*)*(length(cmd)-4));
 
     if(commande==NULL){
-        print("fsh: Erreur d'allocation\n", STDOUT_FILENO);
+        print("fsh: for: Erreur d'allocation\n", STDOUT_FILENO);
         return 1;
     }
 
@@ -71,7 +71,7 @@ int execute_for(char **cmd) {
 
     while(x<length(cmd)-1){
         if(cmd[x]==NULL){
-            print("fsh: Erreur de syntaxe\n", STDOUT_FILENO);
+            print("fsh: for: Erreur de syntaxe\n", STDOUT_FILENO);
             free(commande);
             return 1;
         }
@@ -91,7 +91,7 @@ int execute_for(char **cmd) {
 
     DIR *dir = opendir(directory);
     if(dir==NULL){
-        fprintf(stdout, "fsh: %s: Aucun fichier ou dossier de ce type\n",directory);
+        fprintf(stdout, "fsh: for: %s: Aucun fichier ou dossier de ce type\n",directory);
         free(indice_variable);
         free(commande);
         return 1;

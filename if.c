@@ -13,7 +13,7 @@ extern char **argument(char *line, int *num_tokens);
 // fonction pour gerer les commande dans les { }
 int parse_block(char **cmd, int start, char ***block_cmd) {
     if (cmd[start] == NULL || strcmp(cmd[start], "{") != 0) {
-        const char *error_msg = "Syntax Error: Expected '{'\n";
+        const char *error_msg = "fsh : if : Erreur de syntaxe \n";
         write(STDERR_FILENO, error_msg, strlen(error_msg));
         return -1;
     }
@@ -32,7 +32,7 @@ int parse_block(char **cmd, int start, char ***block_cmd) {
     }
 
     if (brace_count != 0) {
-        const char *error_msg = "Syntax Error: Mismatched '{'\n";
+        const char *error_msg = "fsh : if : Erreur de syntaxe \n";
         write(STDERR_FILENO, error_msg, strlen(error_msg));
         return -1;
     }
@@ -40,7 +40,7 @@ int parse_block(char **cmd, int start, char ***block_cmd) {
     // Calculer la taille du bloc de commandes
     int block_size = end - start - 2; // Exclure les accolades
     if (block_size < 0) {
-        const char *error_msg = "Syntax Error: Empty block or incorrect syntax\n";
+        const char *error_msg = "fsh : if : Erreur de syntaxe \n";
         write(STDERR_FILENO, error_msg, strlen(error_msg));
         return -1;
     }
@@ -66,7 +66,7 @@ int parse_block(char **cmd, int start, char ***block_cmd) {
 // exécuter if
 int execute_if(char **cmd) {
     if (cmd[1] == NULL) {
-        const char *error_msg = "Syntax Error: Missing TEST command\n";
+        const char *error_msg = "fsh : if : Erreur de syntaxe \n";
         write(STDERR_FILENO, error_msg, strlen(error_msg));
         return 1;
     }
@@ -83,7 +83,7 @@ int execute_if(char **cmd) {
 
     // si '{' est présent
     if (test_end == -1) {
-        const char *error_msg = "Syntax Error: Missing '{' for 'if' block\n";
+        const char *error_msg = "fsh : if : Erreur de syntaxe \n";
         write(STDERR_FILENO, error_msg, strlen(error_msg));
         return 1;
     }
@@ -91,7 +91,7 @@ int execute_if(char **cmd) {
     // commande TEST    
     int test_size = test_end - test_start;
     if (test_size < 1) {
-        const char *error_msg = "Syntax Error: Missing TEST command before '{'\n";
+        const char *error_msg = "fsh : if : Erreur de syntaxe \n";
         write(STDERR_FILENO, error_msg, strlen(error_msg));
         return 2;
     }
@@ -171,7 +171,7 @@ int execute_if(char **cmd) {
             free(test_cmd);
             return 1;
         } else if (bytes_read == 0) {
-            const char *error_msg = "Error: No data read from pipe\n";
+            const char *error_msg = "fsh : if : Erreur de syntaxe \n";
             write(STDERR_FILENO, error_msg, strlen(error_msg));
             close(pipefd[0]);
             // vide la mémoire

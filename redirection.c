@@ -7,6 +7,7 @@
 
 
 int execute_commande(char **cmd,int last_status) ; 
+void print(const char* string , int sortie);
 
 int verif_redirection(char **cmd , int pos){
     if (strcmp(cmd[pos], "<") == 0 || strcmp(cmd[pos], ">") == 0 || strcmp(cmd[pos], "2>") == 0 || strcmp(cmd[pos], ">>") == 0 || strcmp(cmd[pos], "2>>") == 0 || strcmp(cmd[pos], ">|") == 0 || strcmp(cmd[pos], "2>|") == 0){
@@ -38,7 +39,7 @@ int execute_redirection (char **tokens , int pos) {
     int sortie_erreur = 0;
     int last_status = 0;
 
-    char **cmd = malloc(pos*sizeof(char *));
+    char **cmd = malloc((pos+1)*sizeof(char *));
 
     if (cmd == NULL) {
         perror("Erreur lors de l'allocation de mémoire pour les commandes");
@@ -48,10 +49,10 @@ int execute_redirection (char **tokens , int pos) {
     extract(tokens,cmd,pos);
 
     if (cmd[0]==NULL){
-        fprintf(stderr,"Aucune commande spécifiée\n");
+        print("Aucune commande spécifiée\n", STDERR_FILENO);
         return 1;
     } else if(tokens[pos+1]==NULL){
-        fprintf(stderr,"Aucun fichier spécifié\n");
+        print("Aucun fichier spécifié\n", STDERR_FILENO);
         return 1;
     }
 
