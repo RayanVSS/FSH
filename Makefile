@@ -3,47 +3,16 @@ CFLAGS = -Wall -Wextra -g
 LIBS = -lreadline -lncurses
 
 # Cible par défaut : créer l'exécutable fsh
-all: fsh
+SRC_DIR = src
 
-fsh: main.o  pwd.o cd.o clear.o  ftype.o  executable.o kill.o redirection.o pipeline.o for.o if.o
-	$(CC) $(CFLAGS) -o fsh main.o pwd.o cd.o clear.o  ftype.o 	 executable.o kill.o redirection.o pipeline.o for.o if.o $(LIBS)
+TARGET = fsh
 
-main.o: main.c
-	$(CC) $(CFLAGS) -c main.c
+all: $(TARGET)
 
-pwd.o: pwd.c
-	$(CC) $(CFLAGS) -c pwd.c
+SRCS = $(SRC_DIR)/main.c  $(SRC_DIR)/pwd.c $(SRC_DIR)/cd.c $(SRC_DIR)/clear.c  $(SRC_DIR)/ftype.c $(SRC_DIR)/executable.c $(SRC_DIR)/kill.c $(SRC_DIR)/redirection.c $(SRC_DIR)/pipeline.c $(SRC_DIR)/for.c $(SRC_DIR)/if.c
 
-cd.o: cd.c
-	$(CC) $(CFLAGS) -c cd.c
-
-clear.o: clear.c
-	$(CC) $(CFLAGS) -c clear.c
-
-man.o: man.c
-	$(CC) $(CFLAGS) -c man.c
-
-ftype.o: ftype.c
-	$(CC) $(CFLAGS) -c ftype.c
-
-executable.o: executable.c
-	$(CC) $(CFLAGS) -c executable.c
-
-
-kill.o: kill.c
-	$(CC) $(CFLAGS) -c kill.c
-
-redirection.o: redirection.c
-	$(CC) $(CFLAGS) -c redirection.c
-
-pipeline.o: pipeline.c
-	$(CC) $(CFLAGS) -c pipeline.c
-
-if.o: if.c
-	$(CC) $(CFLAGS) -c if.c
-
-for.o: for.c
-	$(CC) $(CFLAGS) -c for.c
+$(TARGET): $(SRCS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS) $(LIBS)
 
 clean:
-	rm -f *.o fsh
+	rm -f $(TARGET)
