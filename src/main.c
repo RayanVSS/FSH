@@ -17,7 +17,7 @@ const char *internal_commands[] = {
 };
 
 // Foncctions pour gérer les commandes internes
-int execute_pwd();
+int execute_pwd(char **args);
 int execute_cd(char **args);
 void execute_clear(); 
 int execute_history();
@@ -65,14 +65,15 @@ void afficher_prompt(int last_status, char *buffer, size_t size) {
 
     // Format de la valeur de retour
     char status_str[10];
-    if (last_status == 255) {
-        strcpy(status_str, "SIG");
-    } else {
-        snprintf(status_str, sizeof(status_str), "%d", last_status);
-    }   
+    snprintf(status_str, sizeof(status_str), "%d", last_status);
 
     // tronquer 
     size_t max_length = 27;
+    if (last_status > 99) {
+        max_length = 25;
+    } else if (last_status > 9) {
+        max_length = 26;
+    }
     char display_cwd[PATH_MAX];
     if (strlen(cwd) > (max_length - 5)) { // 5 pour "...[x]"
         snprintf(display_cwd, sizeof(display_cwd), "...%s", cwd + strlen(cwd) - (max_length - 5));
@@ -154,7 +155,7 @@ int execute_commande(char **cmd, int status) {
         last_status = execute_redirection(cmd, redirection);
     }
     else if (strcmp(cmd[0], "pwd") == 0) { 
-        last_status = execute_pwd(); 
+        last_status = execute_pwd(cmd); 
     }
     else if (strcmp(cmd[0], "cd") == 0) { 
         last_status = execute_cd(cmd); 
@@ -173,8 +174,20 @@ int execute_commande(char **cmd, int status) {
         last_status = execute_kill(cmd);
     }
     else if (strcmp(cmd[0], "exit") == 0) { // Comparer avec "exit"
-        int exit_val = (cmd[1] != NULL)  ? atoi(cmd[1]) : last_status; // Obtenir le code de sortie
-        exit(exit_val);
+        int exit_val = 0;
+        if (cmd[1] != NULL) {
+            exit_val = atoi(cmd[1]);
+        }
+        else {
+            exit_val = last_status;
+        }
+        if (cmd[2] != NULL) {
+            print("exit: Trop d'arguments\n", STDERR_FILENO);
+            return 1;
+        }
+        else {
+            exit(exit_val);
+        }
     }
     else {
         last_status = execute_external_command(cmd);
@@ -197,26 +210,25 @@ int execute_all_commands(char **cmds,int status) {
     // Boucle pour traiter les tokens
 
     while (cmds[x]!=NULL){
-        if (strcmp(cmds[x],";")==0 && entre_crochet==0){
+        if (strcmp(cmds[x],";")==0){
             commande[y]=NULL;
-            if(commande[0]!=NULL && y>0){
+            if(commande[0]!=NULL && y>0 && entre_crochet==0){
                 last_status = execute_commande(commande,last_status);
-                y=0;
             }
             else{
                 print("fsh: Erreur de syntaxe\n", STDOUT_FILENO);
                 last_status=1;
-                break;
             }
+            y=0;
         }
-        else if (strcmp(cmds[x],"&&")==0 && entre_crochet==0){
+        else if (strcmp(cmds[x],"&&")==0){
             commande[y]=NULL;
-            if(commande[0]!=NULL && y>0){
+            if(commande[0]!=NULL && y>0 && entre_crochet==0){
                 last_status = execute_commande(commande,last_status);
                 if(last_status!=0){
                     break;
                 }
-                y=0;
+                y=-1;
             }
             else{
                 print("fsh: Erreur de syntaxe\n", STDOUT_FILENO);
@@ -231,28 +243,21 @@ int execute_all_commands(char **cmds,int status) {
         else if (strcmp(cmds[x],"{")==0){
             entre_crochet+=1;
             commande[y]=cmds[x];
-            y++;
         }
         else if(strcmp(cmds[x],"}")==0){
             entre_crochet-=1;
             commande[y]=cmds[x];
-            y++;
-            if(cmds[x+1]==NULL){
-                commande[y]=NULL;
-                last_status = execute_commande(commande,last_status);
-                y=0;
-            }
         }
         else{
             commande[y] = cmds[x];
-            if(cmds[x+1]==NULL){
-                commande[y+1]=NULL;
-                last_status = execute_commande(commande,last_status);
-                y=0;
-            }
-            else{
-                y++;
-            }
+        }
+        if(cmds[x+1]==NULL){
+            commande[y+1]=NULL;
+            last_status = execute_commande(commande,last_status);
+            y=0;
+        }
+        else{
+            y++;
         }
         x++;
     }

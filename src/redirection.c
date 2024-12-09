@@ -17,14 +17,15 @@ int verif_redirection(char **cmd , int pos){
 }
 
 int hasredirection(char** cmd){
-    int x=0;
-    while (cmd[x]!=NULL){
-        if (verif_redirection(cmd,x)==1){
-            return x;
+    int x=-1;
+    int i=0;
+    while (cmd[i]!=NULL){
+        if (verif_redirection(cmd,i)==1){
+            x=i;
         }
-        x++;
+        i++;
     }
-    return -1;
+    return x;
 }
 
 void extract(char ** tokens , char **cmd, int pos) {

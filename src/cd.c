@@ -19,7 +19,7 @@ static char previous_dir[PATH_MAX] = "";
  */
 
 int verif(char *arg);
-int print(char* string , int sortie);
+void print(const char* string , int sortie);
 
 int execute_cd(char **args) {
     char *target;         // Répertoire cible
@@ -29,6 +29,11 @@ int execute_cd(char **args) {
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
         perror("cd");
         return 1; 
+    }
+
+    if (args[2] != NULL) {
+        print("cd: Trop d'arguments\n", STDERR_FILENO);
+        return 1;
     }
 
     // Déterminer la cible du changement de répertoire

@@ -32,9 +32,63 @@ int *pos_indice(char **cmd, char *indice) {
             tab[j] = i;
             j++;
         }
+        else {
+            char *tmp = cmd[i];
+            int k = 0;
+            while (tmp[k] != '\0') {
+                if (tmp[k] == '$') {
+                    if(tmp[k+1]==indice[1]){
+                       tab[j] = i;
+                       j++;
+                       break;
+                    }
+                }
+                k++;
+            }
+        }
         i++;
     }
     return tab;
+}
+
+int nb_occurence(char *c, char *indice) {
+    int i = 0;
+    int j = 0;
+    while (c[i] != '\0') {
+        if (c[i] == indice[0] && c[i + 1] == indice[1]) {
+                j++;
+        }
+        i++;
+    }
+    return j;
+}
+
+
+char * remplace_variable(char * c, char * valeur , char * variable){
+    char *tmp = malloc(sizeof(char)*(strlen(c)+(nb_occurence(c,variable))*(strlen(valeur))));
+    if(tmp==NULL){
+        print("fsh: for: Erreur d'allocation\n", STDOUT_FILENO);
+        return NULL;
+    }
+    int i=0;
+    int j=0;
+    while(c[i]!='\0'){
+        if(c[i]==variable[0] && c[i+1]==variable[1]){
+            for(int k=0;valeur[k]!='\0';k++){
+                tmp[j]=valeur[k];
+
+                j++;
+            }
+            i++;
+        }
+        else{
+            tmp[j]=c[i];
+            j++;
+        }
+        i++;
+    }
+    tmp[j]='\0';
+    return tmp;
 }
 
 int execute_for(char **cmd) {
@@ -49,35 +103,43 @@ int execute_for(char **cmd) {
 
     if(strcmp(cmd[2],"in")!=0){
         print("fsh: for: Erreur de syntaxe\n", STDOUT_FILENO);
+        free(variable);
         return 1;
     }
 
     char *directory = cmd[3];
 
-    if(strcmp(cmd[4],"{")!=0){
+    int pos = 4 ;
+
+    // faire les parametre ici 
+    if(strcmp(cmd[pos],"{")!=0 && strcmp(cmd[length(cmd)-1],"}")!=0){
         print("fsh: for: Erreur de syntaxe\n", STDOUT_FILENO);
+        free(variable);
         return 1;
     }
+
+
+    pos+=1;
 
     char ** commande = malloc(sizeof(char*)*(length(cmd)-4));
 
     if(commande==NULL){
         print("fsh: for: Erreur d'allocation\n", STDOUT_FILENO);
+        free(commande);
         return 1;
     }
-
-    int x=5;
     int y=0;
+    int sauvegarde = pos;
 
-    while(x<length(cmd)-1){
-        if(cmd[x]==NULL){
+    while(pos<length(cmd)-1){
+        if(cmd[pos]==NULL){
             print("fsh: for: Erreur de syntaxe\n", STDOUT_FILENO);
             free(commande);
             return 1;
         }
-
-        commande[y]=cmd[x];
-        x++;
+        commande[y] = malloc(sizeof(char)*(strlen(cmd[pos])+1));
+        strcpy(commande[y],cmd[pos]);
+        pos++;
         y++;
     }
     commande[y]=NULL;
@@ -85,6 +147,7 @@ int execute_for(char **cmd) {
     int *indice_variable = pos_indice(commande,variable);
     if(indice_variable==NULL){
         free(commande);
+        free(indice_variable);
         return 1;
     }
 
@@ -99,9 +162,14 @@ int execute_for(char **cmd) {
 
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL) {
-        if (entry->d_type == DT_REG) {
+        if (entry->d_type == DT_REG && entry->d_name[0] != '.') {
             for (int i = 0; indice_variable[i]!=-1 ; i++) {
-                commande[indice_variable[i]] = concat(concat(directory, "/"), entry->d_name);
+                if(strcmp(variable, commande[indice_variable[i]])==0){
+                    commande[indice_variable[i]] = concat(concat(directory, "/"), entry->d_name);
+                }
+                else{
+                    commande[indice_variable[i]] = remplace_variable(cmd[indice_variable[i]+sauvegarde],concat(concat(directory, "/"), entry->d_name),variable);
+                }
             }
             last_status = execute_all_commands(commande,last_status);
         }
@@ -113,4 +181,3 @@ int execute_for(char **cmd) {
     return last_status;
 
 }
-
