@@ -93,6 +93,11 @@ char * remplace_variable(char * c, char * valeur , char * variable){
 
 int execute_for(char **cmd) {
     int last_status = 0;
+    int parametre[5]={0,0,0,0,0};
+
+    char *extension = NULL;
+    char *type = NULL;
+
 
     if (length(cmd) < 6) {
         print("fsh: for: Erreur de syntaxe\n", STDOUT_FILENO);
@@ -108,8 +113,29 @@ int execute_for(char **cmd) {
     }
 
     char *directory = cmd[3];
-
-    int pos = 4 ;
+    int pos ;
+    for (pos= 4 ; strcmp(cmd[pos],"{")!=0 && cmd[pos]!=NULL ; pos++) {
+        if (strcmp(cmd[pos],"-a")!=0) {
+           parametre[0]=1;
+        }
+        else if (strcmp(cmd[pos],"-r")!=0) {
+            parametre[1]=1;
+        }
+        else if (strcmp(cmd[pos],"-e")!=0 ) {
+            parametre[2]=1;
+        }
+        else if (strcmp(cmd[pos],"-t")!=0) {
+            parametre[3]=1;
+        }
+        else if (strcmp(cmd[pos],"-p")!=0) {
+            parametre[4]=1;
+        }
+        else{
+            print("fsh: for: paramêtre inconnu \n", STDOUT_FILENO);
+            free(variable);
+            return 1;
+        }
+    }
 
     // faire les parametre ici 
     if(strcmp(cmd[pos],"{")!=0 && strcmp(cmd[length(cmd)-1],"}")!=0){
@@ -162,7 +188,7 @@ int execute_for(char **cmd) {
 
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL) {
-        if (entry->d_type == DT_REG && entry->d_name[0] != '.') {
+        if ((parametre[0]==1 || entry->d_name[0]!='.')) {
             for (int i = 0; indice_variable[i]!=-1 ; i++) {
                 if(strcmp(variable, commande[indice_variable[i]])==0){
                     commande[indice_variable[i]] = concat(concat(directory, "/"), entry->d_name);
@@ -171,7 +197,10 @@ int execute_for(char **cmd) {
                     commande[indice_variable[i]] = remplace_variable(cmd[indice_variable[i]+sauvegarde],concat(concat(directory, "/"), entry->d_name),variable);
                 }
             }
-            last_status = execute_all_commands(commande,last_status);
+            int status = execute_all_commands(commande,last_status);
+            if(status>last_status){
+                last_status = status;
+            }
         }
     }
 

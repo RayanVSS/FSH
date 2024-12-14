@@ -17,7 +17,7 @@ const char *internal_commands[] = {
 };
 
 // Foncctions pour gérer les commandes internes
-int execute_pwd(char **args);
+int execute_pwd(char ** args);
 int execute_cd(char **args);
 void execute_clear(); 
 int execute_history();
@@ -177,17 +177,15 @@ int execute_commande(char **cmd, int status) {
         int exit_val = 0;
         if (cmd[1] != NULL) {
             exit_val = atoi(cmd[1]);
+            if (cmd[2] != NULL) {
+                print("exit: Trop d'arguments\n", STDERR_FILENO);
+                return 1;
+            }
         }
         else {
             exit_val = last_status;
         }
-        if (cmd[2] != NULL) {
-            print("exit: Trop d'arguments\n", STDERR_FILENO);
-            return 1;
-        }
-        else {
-            exit(exit_val);
-        }
+        exit(exit_val);
     }
     else {
         last_status = execute_external_command(cmd);
@@ -210,25 +208,26 @@ int execute_all_commands(char **cmds,int status) {
     // Boucle pour traiter les tokens
 
     while (cmds[x]!=NULL){
-        if (strcmp(cmds[x],";")==0){
+        if (strcmp(cmds[x],";")==0 && entre_crochet==0){
             commande[y]=NULL;
-            if(commande[0]!=NULL && y>0 && entre_crochet==0){
+            if(commande[0]!=NULL && y>0){
                 last_status = execute_commande(commande,last_status);
+                y=0;
             }
             else{
                 print("fsh: Erreur de syntaxe\n", STDOUT_FILENO);
                 last_status=1;
+                break;
             }
-            y=0;
         }
-        else if (strcmp(cmds[x],"&&")==0){
+        else if (strcmp(cmds[x],"&&")==0 && entre_crochet==0){
             commande[y]=NULL;
-            if(commande[0]!=NULL && y>0 && entre_crochet==0){
+            if(commande[0]!=NULL && y>0){
                 last_status = execute_commande(commande,last_status);
                 if(last_status!=0){
                     break;
                 }
-                y=-1;
+                y=0;
             }
             else{
                 print("fsh: Erreur de syntaxe\n", STDOUT_FILENO);
@@ -236,28 +235,25 @@ int execute_all_commands(char **cmds,int status) {
                 break;
                 
             }
-            if(last_status!=0){
-                break;
-            }
         }
         else if (strcmp(cmds[x],"{")==0){
             entre_crochet+=1;
             commande[y]=cmds[x];
+            y++;
         }
         else if(strcmp(cmds[x],"}")==0){
             entre_crochet-=1;
             commande[y]=cmds[x];
+            y++;
         }
         else{
             commande[y] = cmds[x];
+            y++;
         }
         if(cmds[x+1]==NULL){
-            commande[y+1]=NULL;
+            commande[y]=NULL;
             last_status = execute_commande(commande,last_status);
             y=0;
-        }
-        else{
-            y++;
         }
         x++;
     }
@@ -412,4 +408,4 @@ int main() {
         free(ligne);
     }
     return last_status;
-}   
+}  
