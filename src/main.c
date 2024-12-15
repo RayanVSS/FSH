@@ -193,70 +193,84 @@ int execute_commande(char **cmd, int status) {
     return last_status;
 }
 
-int execute_all_commands(char **cmds,int status) {
+int execute_all_commands(char **cmds, int status) {
     int last_status = status;
-    char **commande = malloc(64*sizeof(char*));
-    if(commande==NULL){
+    size_t commande_size = 64; // Taille initiale
+    char **commande = malloc(commande_size * sizeof(char*));
+    if (commande == NULL) {
         print("fsh: Erreur d'allocation\n", STDERR_FILENO);
         return 1;
     }
-    int x=0;
-    int y=0;    
-    int entre_crochet=0;
+    size_t y = 0;    
+    int entre_crochet = 0;
 
-    // Exécuter les commandes
-    // Boucle pour traiter les tokens
+    size_t x = 0;
 
-    while (cmds[x]!=NULL){
-        if (strcmp(cmds[x],";")==0 && entre_crochet==0){
-            commande[y]=NULL;
-            if(commande[0]!=NULL && y>0){
-                last_status = execute_commande(commande,last_status);
-                y=0;
-            }
-            else{
-                print("fsh: Erreur de syntaxe\n", STDOUT_FILENO);
-                last_status=1;
-                break;
-            }
-        }
-        else if (strcmp(cmds[x],"&&")==0 && entre_crochet==0){
-            commande[y]=NULL;
-            if(commande[0]!=NULL && y>0){
-                last_status = execute_commande(commande,last_status);
-                if(last_status!=0){
-                    break;
+    while (cmds[x] != NULL) {
+        // Vérifier si on a besoin d'agrandir 'commande'
+        if (y >= commande_size - 1) { // Réserver une place pour NULL
+            commande_size *= 2;
+            char **temp = realloc(commande, commande_size * sizeof(char*));
+            if (temp == NULL) {
+                print("fsh: Erreur de réallocation\n", STDERR_FILENO);
+                // Libérer les commandes déjà allouées
+                for (size_t i = 0; i < y; i++) {
+                    commande[i] = NULL; // Ne pas double free, suppose que cmds est géré ailleurs
                 }
-                y=0;
+                free(commande);
+                return 1;
             }
-            else{
-                print("fsh: Erreur de syntaxe\n", STDOUT_FILENO);
-                last_status=1;
-                break;
-                
-            }
+            commande = temp;
         }
-        else if (strcmp(cmds[x],"{")==0){
-            entre_crochet+=1;
-            commande[y]=cmds[x];
-            y++;
-        }
-        else if(strcmp(cmds[x],"}")==0){
-            entre_crochet-=1;
-            commande[y]=cmds[x];
-            y++;
-        }
-        else{
+
+        if (strcmp(cmds[x], "{") == 0) {
+            entre_crochet += 1;
             commande[y] = cmds[x];
             y++;
         }
-        if(cmds[x+1]==NULL){
-            commande[y]=NULL;
-            last_status = execute_commande(commande,last_status);
-            y=0;
+        else if (strcmp(cmds[x], "}") == 0) {
+            if (entre_crochet <= 0) {
+                print("fsh: Erreur de syntaxe : } inattendu\n", STDERR_FILENO);
+                free(commande);
+                return 1;
+            }
+            entre_crochet -= 1;
+            commande[y] = cmds[x];
+            y++;
         }
+        else if ((strcmp(cmds[x], ";") == 0 || strcmp(cmds[x], "&&") == 0) && entre_crochet == 0) {
+            commande[y] = NULL; // Terminer la commande
+            if (commande[0] != NULL && y > 0) {
+                last_status = execute_commande(commande, last_status);
+                y = 0;
+            }
+            else {
+                print("fsh: Erreur de syntaxe\n", STDERR_FILENO);
+                last_status = 1;
+                break;
+            }
+        }
+        else {
+            commande[y] = cmds[x];
+            y++;
+        }
+
         x++;
     }
+
+    // Exécuter la dernière commande si elle existe
+    if (y > 0) {
+        commande[y] = NULL;
+        last_status = execute_commande(commande, last_status);
+    }
+
+    // Vérifier si toutes les accolades ont été fermées
+    if (entre_crochet != 0) {
+        print("fsh: Erreur de syntaxe : accolades non fermées\n", STDERR_FILENO);
+        free(commande);
+        return 1;
+    }
+
     free(commande);
     return last_status;
 }
