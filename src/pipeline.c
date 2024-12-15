@@ -13,7 +13,19 @@
  * @return int Retourne le code de retour de la dernière commande du pipeline.
  */
 
-int execute_commande(char **cmd);
+int execute_commande(char **cmd,int last_status) ;
+int free_tokens(char **tokens);
+int haspipeline(char **cmd) {
+    int i = 0;
+    int compt = 0;
+    while (cmd[i] != NULL) {
+        if (strcmp(cmd[i], "|") == 0) {
+            compt++;
+        }
+        i++;
+    }
+    return compt;
+}
 
 void extract_cmd(char **tokens, char ***cmds) {
     int i = 0;
@@ -86,7 +98,7 @@ int execute_pipeline(char **tokens, int n) {
             } 
 
             // Exécution de la commande
-            int s = execute_commande(cmds[i]);
+            int s = execute_commande(cmds[i],status);
             if (s == -1) {
                 perror("Erreur lors de l'exécution de la commande");
                 exit(EXIT_FAILURE);
@@ -106,9 +118,6 @@ int execute_pipeline(char **tokens, int n) {
     // Attendre la fin du dernier processus et récupérer son code de retour
     waitpid(pid, &status, 0);
 
-    for (int i = 0; i < n + 1; i++) {
-        free(cmds[i]);
-    }
     free(cmds);
 
     return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
