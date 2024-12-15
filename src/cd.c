@@ -25,19 +25,30 @@ int execute_cd(char **args) {
     char *target;         // Répertoire cible
     char cwd[PATH_MAX];   // Buffer pour stocker le répertoire courant
 
+    // Vérifiez que args n'est pas NULL
+    if (args == NULL) {
+        print("cd: arguments invalides\n", STDERR_FILENO);
+        return 1;
+    }
+
     // Obtenir le répertoire courant avant le changement
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
         perror("cd");
         return 1; 
     }
 
-    if (args[2] != NULL) {
+    // Comptage des arguments
+    int count = 0;
+    while (args[count] != NULL) {
+        count++;
+    }
+    if (count > 2) {
         print("cd: Trop d'arguments\n", STDERR_FILENO);
         return 1;
     }
 
     // Déterminer la cible du changement de répertoire
-    if (args[1] == NULL || strcmp(args[1], "~") == 0 || verif(args[1])==0) {
+    if (count == 1 || strcmp(args[1], "~") == 0 || verif(args[1]) == 0) {
         // Aucun argument fourni, utiliser $HOME
         target = getenv("HOME");
         if (target == NULL) {
@@ -65,6 +76,8 @@ int execute_cd(char **args) {
     }
 
     // Mettre à jour le répertoire précédent
-    strcpy(previous_dir, cwd);
+    strncpy(previous_dir, cwd, PATH_MAX - 1);
+    previous_dir[PATH_MAX - 1] = '\0'; // Assurez-vous que la chaîne est terminée
+
     return 0; // Succès
 }
