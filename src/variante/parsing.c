@@ -10,6 +10,9 @@
 
 #define MAX_ARGS 128
 #define MAX_CMD_LENGTH 1024
+
+// plusieurs type de struct etait possible
+// après une version prècedente celle la parait plus efficace
 /*
 typedef struct Command {
     char *name;            // Nom de la commande
@@ -58,10 +61,10 @@ void free_command(Command *cmd) {
     free(cmd);
 }
 
-// Fonction de parsing pour les redirections
+// Fonction de parsing pour extraire la commande et les redirections
 Command *parse_command(char *input) {
     if (!input) {
-        fprintf(stderr, "Erreur \n");
+        fprintf(stderr, "Erreur : commande vide\n");
         return NULL;
     }
 
@@ -73,26 +76,28 @@ Command *parse_command(char *input) {
         if (strcmp(token, "<") == 0) {
             token = strtok(NULL, " ");
             if (!token) {
-                fprintf(stderr, "Erreur : <\n");
+                fprintf(stderr, "Erreur : fichier manquant après '<'\n");
                 free_command(cmd);
                 return NULL;
             }
             cmd->input_file = strdup(token);
-        } else if (strcmp(token, ">") == 0 || strcmp(token, ">>") == 0) {
+        } else if (strcmp(token, ">") == 0 || strcmp(token, ">>") == 0 || strcmp(token, ">|") == 0) {
             int append = (strcmp(token, ">>") == 0);
+            int force_overwrite = (strcmp(token, ">|") == 0);
             token = strtok(NULL, " ");
             if (!token) {
-                fprintf(stderr, "Erreur > \n");
+                fprintf(stderr, "Erreur : fichier manquant après '>' ou '>>' ou '>|'\n");
                 free_command(cmd);
                 return NULL;
             }
             cmd->output_file = strdup(token);
             cmd->append_output = append;
-        } else if (strcmp(token, "2>") == 0 || strcmp(token, "2>>") == 0) {
+        } else if (strcmp(token, "2>") == 0 || strcmp(token, "2>>") == 0 || strcmp(token, "2>|") == 0) {
             int append = (strcmp(token, "2>>") == 0);
+            int force_overwrite = (strcmp(token, "2>|") == 0);
             token = strtok(NULL, " ");
             if (!token) {
-                fprintf(stderr, "Erreur 2> ou 2>>\n");
+                fprintf(stderr, "Erreur : fichier manquant après '2>' ou '2>>' ou '2>|'\n");
                 free_command(cmd);
                 return NULL;
             }
@@ -110,61 +115,56 @@ Command *parse_command(char *input) {
     return cmd;
 }
 
-// Fonction pour valider les fichiers spécifiés dans les redirections
-int execute_redirection(Command *cmd) {
+// Fonction pour valider et appliquer les redirections
+int apply_redirection(Command *cmd) {
     if (!cmd) return -1;
 
+    // Gestion de la redirection d'entrée (<)
     if (cmd->input_file) {
-        FILE *input = fopen(cmd->input_file, "r");
-        if (!input) {
-            perror("Erreur");
+        int input_fd = open(cmd->input_file, O_RDONLY);
+        if (input_fd == -1) {
+            perror("Erreur ouverture fichier entrée");
             return 1;
         }
-        fclose(input);
+        if (dup2(input_fd, STDIN_FILENO) == -1) {
+            perror("Erreur duplication entrée");
+            close(input_fd);
+            return 1;
+        }
+        close(input_fd);
     }
 
+    // Gestion de la redirection de sortie (> ou >> ou >|)
     if (cmd->output_file) {
-        FILE *output = fopen(cmd->output_file, cmd->append_output ? "a" : "w");
-        if (!output) {
-            perror("Erreu");
+        int flags = O_WRONLY | O_CREAT | (cmd->append_output ? O_APPEND : O_TRUNC);
+        int output_fd = open(cmd->output_file, flags, 0644);
+        if (output_fd == -1) {
+            perror("Erreur ouverture fichier sortie");
             return 1;
         }
-        fclose(output);
+        if (dup2(output_fd, STDOUT_FILENO) == -1) {
+            perror("Erreur duplication sortie");
+            close(output_fd);
+            return 1;
+        }
+        close(output_fd);
     }
 
+    // Gestion de la redirection d'erreur (2> ou 2>> ou 2>|)
     if (cmd->error_file) {
-        FILE *error = fopen(cmd->error_file, cmd->append_output ? "a" : "w");
-        if (!error) {
-            perror("Erreur");
+        int flags = O_WRONLY | O_CREAT | (cmd->append_output ? O_APPEND : O_TRUNC);
+        int error_fd = open(cmd->error_file, flags, 0644);
+        if (error_fd == -1) {
+            perror("Erreur ouverture fichier erreur");
             return 1;
         }
-        fclose(error);
+        if (dup2(error_fd, STDERR_FILENO) == -1) {
+            perror("Erreur duplication erreur");
+            close(error_fd);
+            return 1;
+        }
+        close(error_fd);
     }
 
-    return 0;
-}
-
-int main() {
-    char input[MAX_CMD_LENGTH];
-    printf("Entrez une commande: ");
-    if (fgets(input, sizeof(input), stdin) == NULL) {
-        perror("fgets");
-        return EXIT_FAILURE;
-    }
-
-    input[strcspn(input, "\n")] = 0;
-    Command *cmd = parse_command(input);
-    if (!cmd) return EXIT_FAILURE;
-
-    if (execute_redirection(cmd) != 0) {
-        free_command(cmd);
-        return EXIT_FAILURE;
-    }
-
-    if (cmd->name) {
-        printf("Execution de la commande: %s\n", cmd->name);
-    }
-
-    free_command(cmd);
     return 0;
 }
