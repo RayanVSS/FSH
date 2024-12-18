@@ -5,10 +5,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "command.h"
+
 
 #define MAX_ARGS 128
 #define MAX_CMD_LENGTH 1024
-
+/*
 typedef struct Command {
     char *name;            // Nom de la commande
     char **args;           // Arguments de la commande
@@ -17,6 +19,7 @@ typedef struct Command {
     char *error_file;      // Redirection d'erreur (2> ou 2>>)
     int append_output;     // Indicateur pour "ajout" (>> ou 2>>)
 } Command;
+*/
 
 // Initialisation de la structure Command
 Command *init_command() {
