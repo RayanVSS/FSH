@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
+#include <unistd.h> 
 #include "command.h"
 
 
@@ -32,9 +34,9 @@ Command *init_command() {
         exit(EXIT_FAILURE);
     }
     cmd->name = NULL;
-    cmd->args = malloc(sizeof(char *) * MAX_ARGS);
+    cmd->args = calloc(MAX_ARGS, sizeof(char *));
     if (!cmd->args) {
-        perror("malloc");
+        perror("calloc");
         free(cmd);
         exit(EXIT_FAILURE);
     }
@@ -44,6 +46,7 @@ Command *init_command() {
     cmd->append_output = 0;
     return cmd;
 }
+
 
 // Libération de la mémoire d'une commande
 void free_command(Command *cmd) {
