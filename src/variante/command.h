@@ -1,6 +1,9 @@
 #ifndef COMMAND_H
 #define COMMAND_H
 
+// Ce fichier définit la structure Command, qui sert à représenter une commande shell avec ses arguments,
+// ses redirections d'entrée (<), de sortie (>) et d'erreur (2>).
+
 #define MAX_ARGS 128
 
 typedef struct Command {
@@ -12,8 +15,13 @@ typedef struct Command {
     int append_output;
 } Command;
 
-Command init_command();
-void free_command(Command cmd);
-Command parse_command(char *input);
+// Initialise Command.
+Command *init_command();
+
+// Libère la mémoire d'une struct Command.
+void free_command(Command *cmd);
+
+// extrait les eléments necessaire
+Command *parse_command(const char *input);
 
 #endif // COMMAND_H
