@@ -13,16 +13,16 @@
 #include <errno.h> // Ajout pour strerror
 
 const char *internal_commands[] = {
-     "pwd", "cd", "clear", "history", "exit", "compgen","kill","ftype", NULL
+     "pwd", "cd", "clear", "history", "exit","kill", "ftype", NULL
 };
 
 // Foncctions pour gérer les commandes internes
-int execute_pwd();
+int execute_pwd(char ** args);
 int execute_cd(char **args);
 void execute_clear(); 
-int execute_kill(pid_t pid, int signal);
 int execute_history();
 int execute_ftype(char **args);
+int execute_kill(char ** args);
 
 // pour if
 int execute_if(char **cmd);
@@ -40,12 +40,12 @@ int execute_for(char **cmd);
 
 // Fonctions pour gérer les commandes externes
 int execute_executable(char **args);
-int execute_compgen(const char *internal_commands[], int argc, char **argv);
 int execute_external_command(char **args);
 
 
 void print(const char* string , int sortie){
     write(sortie,string,strlen(string));
+    
 }
 
 // Fonction pour afficher le prompt
@@ -65,14 +65,19 @@ void afficher_prompt(int last_status, char *buffer, size_t size) {
 
     // Format de la valeur de retour
     char status_str[10];
-    if (last_status == 255) {
-        strcpy(status_str, "SIG");
+    if (last_status == 128 + SIGTERM || last_status == 128 + SIGINT) {
+        snprintf(status_str, sizeof(status_str), "SIG");
     } else {
         snprintf(status_str, sizeof(status_str), "%d", last_status);
-    }   
+    }
 
     // tronquer 
     size_t max_length = 27;
+    if (last_status > 99) {
+        max_length = 25;
+    } else if (last_status > 9) {
+        max_length = 26;
+    }
     char display_cwd[PATH_MAX];
     if (strlen(cwd) > (max_length - 5)) { // 5 pour "...[x]"
         snprintf(display_cwd, sizeof(display_cwd), "...%s", cwd + strlen(cwd) - (max_length - 5));
@@ -154,7 +159,7 @@ int execute_commande(char **cmd, int status) {
         last_status = execute_redirection(cmd, redirection);
     }
     else if (strcmp(cmd[0], "pwd") == 0) { 
-        last_status = execute_pwd(); 
+        last_status = execute_pwd(cmd); 
     }
     else if (strcmp(cmd[0], "cd") == 0) { 
         last_status = execute_cd(cmd); 
@@ -169,8 +174,21 @@ int execute_commande(char **cmd, int status) {
     else if (strcmp(cmd[0], "ftype") == 0) {
         last_status = execute_ftype(cmd);
     }
+    else if (strcmp(cmd[0], "kill") == 0) {
+        last_status = execute_kill(cmd);
+    }
     else if (strcmp(cmd[0], "exit") == 0) { // Comparer avec "exit"
-        int exit_val = (cmd[1] != NULL)  ? atoi(cmd[1]) : last_status; // Obtenir le code de sortie
+        int exit_val = 0;
+        if (cmd[1] != NULL) {
+            exit_val = atoi(cmd[1]);
+            if (cmd[2] != NULL) {
+                print("exit: Trop d'arguments\n", STDERR_FILENO);
+                return 1;
+            }
+        }
+        else {
+            exit_val = last_status;
+        }
         exit(exit_val);
     }
     else {
@@ -179,80 +197,90 @@ int execute_commande(char **cmd, int status) {
     return last_status;
 }
 
-int execute_all_commands(char **cmds,int status) {
+int execute_all_commands(char **cmds, int status) {
     int last_status = status;
-    char **commande = malloc(64*sizeof(char*));
-    if(commande==NULL){
+    size_t commande_size = 64; // Taille initiale
+    char **commande = malloc(commande_size * sizeof(char*));
+    if (commande == NULL) {
         print("fsh: Erreur d'allocation\n", STDERR_FILENO);
         return 1;
     }
-    int x=0;
-    int y=0;    
-    int entre_crochet=0;
+    size_t y = 0;    
+    int entre_crochet = 0;
 
-    // Exécuter les commandes
-    // Boucle pour traiter les tokens
+    size_t x = 0;
 
-    while (cmds[x]!=NULL){
-        if (strcmp(cmds[x],";")==0 && entre_crochet==0){
-            commande[y]=NULL;
-            if(commande[0]!=NULL && y>0){
-                last_status = execute_commande(commande,last_status);
-                y=0;
+    while (cmds[x] != NULL) {
+        // Vérifier si on a besoin d'agrandir 'commande'
+        if (y >= commande_size - 1) { // Réserver une place pour NULL
+            commande_size *= 2;
+            char **temp = realloc(commande, commande_size * sizeof(char*));
+            if (temp == NULL) {
+                print("fsh: Erreur de réallocation\n", STDERR_FILENO);
+                // Libérer les commandes déjà allouées
+                for (size_t i = 0; i < y; i++) {
+                    commande[i] = NULL; // Ne pas double free, suppose que cmds est géré ailleurs
+                }
+                free(commande);
+                return 1;
             }
-            else{
-                print("fsh: Erreur de syntaxe\n", STDOUT_FILENO);
-                last_status=1;
-                break;
-            }
+            commande = temp;
         }
-        else if (strcmp(cmds[x],"&&")==0 && entre_crochet==0){
-            commande[y]=NULL;
-            if(commande[0]!=NULL && y>0){
-                last_status = execute_commande(commande,last_status);
-                if(last_status!=0){
+
+        if (strcmp(cmds[x], "{") == 0) {
+            entre_crochet += 1;
+            commande[y] = cmds[x];
+            y++;
+        }
+        else if (strcmp(cmds[x], "}") == 0) {
+            if (entre_crochet <= 0) {
+                print("fsh: Erreur de syntaxe : } inattendu\n", STDERR_FILENO);
+                free(commande);
+                return 1;
+            }
+            entre_crochet -= 1;
+            commande[y] = cmds[x];
+            y++;
+        }
+        else if ((strcmp(cmds[x], ";") == 0 || strcmp(cmds[x], "&&") == 0) && entre_crochet == 0) {
+            commande[y] = NULL; // Terminer la commande
+            if (commande[0] != NULL && y > 0) {
+                last_status = execute_commande(commande, last_status);
+                if (last_status == SIGINT + 128) {
                     break;
                 }
-                y=0;
+                y = 0;
             }
-            else{
-                print("fsh: Erreur de syntaxe\n", STDOUT_FILENO);
-                last_status=1;
-                break;
-                
-            }
-            if(last_status!=0){
+            else {
+                print("fsh: Erreur de syntaxe\n", STDERR_FILENO);
+                last_status = 1;
                 break;
             }
-        }
-        else if (strcmp(cmds[x],"{")==0){
-            entre_crochet+=1;
-            commande[y]=cmds[x];
-            y++;
-        }
-        else if(strcmp(cmds[x],"}")==0){
-            entre_crochet-=1;
-            commande[y]=cmds[x];
-            y++;
-            if(cmds[x+1]==NULL){
-                commande[y]=NULL;
-                last_status = execute_commande(commande,last_status);
-                y=0;
+            if (strcmp(cmds[x], "&&") == 0 && last_status != 0) {
+                break;
             }
         }
-        else{
+        else {
             commande[y] = cmds[x];
-            if(cmds[x+1]==NULL){
-                commande[y+1]=NULL;
-                last_status = execute_commande(commande,last_status);
-                y=0;
-            }
-            else{
-                y++;
-            }
+            y++;
         }
+
         x++;
     }
+
+    // Exécuter la dernière commande si elle existe
+    if (y > 0) {
+        commande[y] = NULL;
+        last_status = execute_commande(commande, last_status);
+    }
+
+    // Vérifier si toutes les accolades ont été fermées
+    if (entre_crochet != 0) {
+        print("fsh: Erreur de syntaxe : accolades non fermées\n", STDERR_FILENO);
+        free(commande);
+        return 1;
+    }
+
     free(commande);
     return last_status;
 }
@@ -356,6 +384,7 @@ int main() {
     // gestionnaires de signaux
     signal(SIGINT, handle_sigint);
     signal(SIGTSTP, SIG_IGN);
+    signal(SIGTERM, SIG_IGN);
 
     rl_attempted_completion_function = completion; // pour Tab
 
@@ -366,6 +395,14 @@ int main() {
 
         // Lire la ligne de commande avec readline en utilisant le prompt construit
         ligne = readline(prompt);
+
+        // Vérifier si un signal SIGTERM a été reçu
+        if (SIG_ERR == signal(SIGTERM, SIG_IGN)) {
+            if (strlen(ligne) != 0) {
+                print("\n", STDOUT_FILENO);
+                break;
+            }
+        }
 
         if (!ligne) { // EOF (Ctrl-D)
             print("\n", STDOUT_FILENO);
@@ -404,4 +441,4 @@ int main() {
         free(ligne);
     }
     return last_status;
-}   
+}  
