@@ -11,6 +11,7 @@
 int execute_all_commands(char **cmds, int status);
 char *concat(const char *s1, const char *s2);
 void print(const char* string, int sortie);
+void handle_sigint();
 
 // profondeur maximale pour éviter les récursions infinies
 #define MAX_DEPTH 100
@@ -187,11 +188,6 @@ int parcours_recursif(char *directory, char **cmd, char **commande, int *paramet
                     }
                     if (pid_enfant == 0) {
                         int status = execute_all_commands(commande, last_status);
-                        if (status == SIGINT + 128) {
-                            free(p);
-                            closedir(dir);
-                            exit(status);
-                        }
                         exit(status);
                     }
                     else{
@@ -218,19 +214,11 @@ int parcours_recursif(char *directory, char **cmd, char **commande, int *paramet
         }
     }
     closedir(dir);
-    for (int i = 0; i<parallel; i++) {
+    for (int i = 0; i < parallel; i++) {
         int status;
         waitpid(pid_enfants[i], &status, 0);
-        if (WIFEXITED(status)) {
+        if(WIFEXITED(status)){
             status = WEXITSTATUS(status);
-        } 
-        else if (WIFSIGNALED(status)) {
-            status = 128 + WTERMSIG(status);
-        } else  {
-            status = 148; 
-        }
-        if (status == SIGINT + 128) {
-            return status;
         }
         if(status > last_status) last_status = status;
     }
