@@ -221,6 +221,14 @@ int parcours_recursif(char *directory, char **cmd, char **commande, int *paramet
     for (int i = 0; i<parallel; i++) {
         int status;
         waitpid(pid_enfants[i], &status, 0);
+        if (WIFEXITED(status)) {
+            status = WEXITSTATUS(status);
+        } 
+        else if (WIFSIGNALED(status)) {
+            status = 128 + WTERMSIG(status);
+        } else  {
+            status = 148; 
+        }
         if (status == SIGINT + 128) {
             return status;
         }
