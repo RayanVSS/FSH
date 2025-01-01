@@ -5,10 +5,13 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 int execute_all_commands(char **cmds, int status);
 char *concat(const char *s1, const char *s2);
 void print(const char* string, int sortie);
+void handle_sigint();
 
 // profondeur maximale pour éviter les récursions infinies
 #define MAX_DEPTH 100
@@ -91,7 +94,9 @@ char *remplace_variable(const char *c, const char *valeur, const char *variable)
     return tmp;
 }
 
-int parcours_recursif(char *directory, char **cmd, char **commande, int *parametre, char *extension, char *type, char *variable, int *indice_variable, int last_status, int sauvegarde, int depth) {
+int parcours_recursif(char *directory, char **cmd, char **commande, int *parametre, char *extension, char *type, char *variable, int *indice_variable, int last_status, int sauvegarde, int depth , int parallel) {
+    pid_t pid_enfants[parallel]; 
+    int max_parallel = parallel;
     if (depth > MAX_DEPTH) {
         print("fsh: for: Profondeur de récursion maximale atteinte\n", STDERR_FILENO);
         return last_status;
@@ -175,18 +180,48 @@ int parcours_recursif(char *directory, char **cmd, char **commande, int *paramet
                         commande[indice_variable[i]] = tmp;
                     }
                 }
-                int status = execute_all_commands(commande, last_status);
-                if(status > last_status) last_status = status;
+                if(parametre[4]==1 && max_parallel > 1){
+                    pid_t pid_enfant = fork();
+                    if(pid_enfant == -1){
+                        perror("fork");
+                        continue;
+                    }
+                    if (pid_enfant == 0) {
+                        int status = execute_all_commands(commande, last_status);
+                        exit(status);
+                    }
+                    else{
+                        pid_enfants[max_parallel - 1] = pid_enfant;
+                        max_parallel= max_parallel - 1;
+                    }
+                }
+                else{
+                    int status = execute_all_commands(commande, last_status);
+                    if (status == SIGINT + 128) {
+                        free(p);
+                        closedir(dir);
+                        return status;
+                    }
+                    if(status > last_status) last_status = status;
+                }
             }
 
             if(parametre[1] == 1 && S_ISDIR(st.st_mode)){
-                last_status = parcours_recursif(p, cmd, commande, parametre, extension, type, variable, indice_variable, last_status, sauvegarde, depth + 1);
+                last_status = parcours_recursif(p, cmd, commande, parametre, extension, type, variable, indice_variable, last_status, sauvegarde, depth + 1, max_parallel);
             }
 
             free(p);
         }
     }
     closedir(dir);
+    for (int i = 0; i < parallel; i++) {
+        int status;
+        waitpid(pid_enfants[i], &status, 0);
+        if(WIFEXITED(status)){
+            status = WEXITSTATUS(status);
+        }
+        if(status > last_status) last_status = status;
+    }
     return last_status;
 }
 
@@ -358,7 +393,7 @@ int execute_for(char **cmd) {
         return 1;
     }
 
-    last_status = parcours_recursif(directory, cmd, commande, parametre, extension, type, variable, indice_variable, last_status, sauvegarde, 0);
+    last_status = parcours_recursif(directory, cmd, commande, parametre, extension, type, variable, indice_variable, last_status, sauvegarde, 0, max_parallel);
 
     free(indice_variable);
     for(int i = 0; commande[i] != NULL; i++){

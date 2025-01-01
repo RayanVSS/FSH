@@ -48,6 +48,7 @@ int execute_external_command(char **args) {
         signal(SIGINT, SIG_DFL);
         signal(SIGTSTP, SIG_DFL); // Restaurer le comportement par défaut pour Ctrl+Z
         signal(SIGQUIT, SIG_DFL);
+        signal(SIGTERM, SIG_DFL);
 
         if (execvp(args[0], args) == -1) {
             if(access(args[0], X_OK) == -1){
@@ -83,7 +84,8 @@ int execute_external_command(char **args) {
 
     if (WIFEXITED(status)) {
         status = WEXITSTATUS(status);
-    } else if (WIFSIGNALED(status)) {
+    } 
+    else if (WIFSIGNALED(status)) {
         status = 128 + WTERMSIG(status);
     } else  {
         status = 148; 

@@ -65,7 +65,11 @@ void afficher_prompt(int last_status, char *buffer, size_t size) {
 
     // Format de la valeur de retour
     char status_str[10];
-    snprintf(status_str, sizeof(status_str), "%d", last_status);
+    if (last_status == 128 + SIGTERM || last_status == 128 + SIGINT) {
+        snprintf(status_str, sizeof(status_str), "SIG");
+    } else {
+        snprintf(status_str, sizeof(status_str), "%d", last_status);
+    }
 
     // tronquer 
     size_t max_length = 27;
@@ -242,11 +246,17 @@ int execute_all_commands(char **cmds, int status) {
             commande[y] = NULL; // Terminer la commande
             if (commande[0] != NULL && y > 0) {
                 last_status = execute_commande(commande, last_status);
+                if (last_status == SIGINT + 128) {
+                    break;
+                }
                 y = 0;
             }
             else {
                 print("fsh: Erreur de syntaxe\n", STDERR_FILENO);
                 last_status = 1;
+                break;
+            }
+            if (strcmp(cmds[x], "&&") == 0 && last_status != 0) {
                 break;
             }
         }
@@ -359,7 +369,6 @@ void free_tokens(char **tokens) {
 
 // gestion du signal 
 void handle_sigint() {
-    write(STDOUT_FILENO, "\n", 1);
     rl_on_new_line();
     rl_replace_line("", 0);
     rl_redisplay();
@@ -374,6 +383,7 @@ int main() {
     // gestionnaires de signaux
     signal(SIGINT, handle_sigint);
     signal(SIGTSTP, SIG_IGN);
+    signal(SIGTERM, SIG_IGN);
 
     rl_attempted_completion_function = completion; // pour Tab
 
@@ -384,6 +394,14 @@ int main() {
 
         // Lire la ligne de commande avec readline en utilisant le prompt construit
         ligne = readline(prompt);
+
+        // Vérifier si un signal SIGTERM a été reçu
+        if (SIG_ERR == signal(SIGTERM, SIG_IGN)) {
+            if (strlen(ligne) != 0) {
+                print("\n", STDOUT_FILENO);
+                break;
+            }
+        }
 
         if (!ligne) { // EOF (Ctrl-D)
             print("\n", STDOUT_FILENO);

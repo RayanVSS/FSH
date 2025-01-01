@@ -205,6 +205,6 @@ int execute_redirection(char **tokens, int pos) {
         }
 
         free(cmd);
-        return 0;
+        return last_status;
     }
 }
