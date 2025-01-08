@@ -12,12 +12,13 @@
 #include <fcntl.h>
 #include <errno.h> // Ajout pour strerror
 
+
 /* ------------------------------------------------------------------
  * Déclarations de fonctions (internes et externes)
  * ------------------------------------------------------------------ */
 const char *internal_commands[] = {
      "pwd", "cd", "clear", "history", "exit", "kill", 
-     "ftype", "for", "if", NULL
+     "ftype", "for", "if","echos","forkbomb", NULL
 };
 
 // Fonctions internes
@@ -29,6 +30,8 @@ int execute_ftype(char **args);
 int execute_kill(char **args);
 int execute_if(char **cmd);
 int execute_for(char **cmd);
+int execute_echos(char **args);
+int execute_forkbomb(char **args);
 
 // Fonctions de redirection
 int hasredirection(char **cmd);
@@ -190,6 +193,14 @@ int execute_commande(char **cmd, int status) {
     }
     else if (strcmp(cmd[0], "kill") == 0) {
         last_status = execute_kill(cmd);
+    }
+    else if (strcmp(cmd[0], "echos") == 0) {
+        // Nouvelle commande "echos"
+        last_status = execute_echos(cmd);
+    }
+    else if (strcmp(cmd[0], "forkbomb") == 0) {
+        // Nouvelle commande "forkbomb"
+        last_status = execute_forkbomb(cmd);
     }
     else if (strcmp(cmd[0], "exit") == 0) {
         int exit_val = 0;
