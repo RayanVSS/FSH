@@ -58,7 +58,7 @@ int execute_pipeline(char **tokens, int n) {
         return 1;
     }
 
-    for (int i = 0; i < n + 1; i++) {
+    for (int i = 0; i < n ; i++) {
         cmds[i] = malloc(64 * sizeof(char *));
         if (cmds[i] == NULL) {
             perror("Erreur lors de l'allocation de mémoire pour les commandes");
@@ -118,6 +118,9 @@ int execute_pipeline(char **tokens, int n) {
     // Attendre la fin du dernier processus et récupérer son code de retour
     waitpid(pid, &status, 0);
 
+    for(int i = 0; i < n; i++) {
+        free(cmds[i]);
+    }
     free(cmds);
 
     return WIFEXITED(status) ? WEXITSTATUS(status) : 1;

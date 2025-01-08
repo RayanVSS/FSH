@@ -65,6 +65,7 @@ int parse_block(char **cmd, int start, char ***block_cmd) {
 
 // exécuter if
 int execute_if(char **cmd) {
+    int last_status = 0;
     if (cmd[1] == NULL) {
         const char *error_msg = "fsh : if : Erreur de syntaxe \n";
         write(STDERR_FILENO, error_msg, strlen(error_msg));
@@ -219,7 +220,7 @@ int execute_if(char **cmd) {
                 return 1;
             }
             
-            int if_status = execute_all_commands(if_block,0);
+            last_status = execute_all_commands(if_block,0);
 
             // vide la mémoire
             for (int i = 0; if_block[i] != NULL; i++) {
@@ -227,7 +228,6 @@ int execute_if(char **cmd) {
             }
             free(if_block);
 
-            return if_status;
         } else if (else_start != -1) { // else 
             char **else_block = NULL;
             int block_end = parse_block(cmd, else_start + 1, &else_block);
@@ -235,17 +235,15 @@ int execute_if(char **cmd) {
                 return 1;
             }
 
-            int else_status = execute_all_commands(else_block,0);
+            last_status = execute_all_commands(else_block,0);
 
             // vide la mémoire
             for (int i = 0; else_block[i] != NULL; i++) {
                 free(else_block[i]);
             }
             free(else_block);
-
-            return else_status;
         }
 
-        return 0;
+        return last_status;
     }
 }
