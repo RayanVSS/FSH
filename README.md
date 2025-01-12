@@ -98,7 +98,6 @@ Utilisez la commande suivante pour cloner le projet :
 3. **Déplacez vous** 
     
     ```bash
-    
     cd terminal
     ```
     
@@ -121,7 +120,7 @@ Lancez le terminal avec :
 
 Ce projet a été réalisé par les auteurs suivants, étudiants en informatique :
 
-- **Belhassen Rayan** - 22215583 - belhasse
+- **Belhassen Rayan** - 22215583 - @belhasse
 - **Bencheikh Ilias** - 22202353 - @bencheik
 - **Lounici Sifaks** - 22214651 - @lounici
 
