@@ -12,66 +12,76 @@
 #include <fcntl.h>
 #include <errno.h> // Ajout pour strerror
 
+
+/* ------------------------------------------------------------------
+ * Déclarations de fonctions (internes et externes)
+ * ------------------------------------------------------------------ */
 const char *internal_commands[] = {
-     "pwd", "cd", "clear", "history", "exit","kill", "ftype", NULL
+     "pwd", "cd", "clear", "history", "exit", "kill", 
+     "ftype", "for", "if","echos","forkbomb", NULL
 };
 
-// Foncctions pour gérer les commandes internes
-int execute_pwd(char ** args);
+// Fonctions internes
+int execute_pwd(char **args);
 int execute_cd(char **args);
-void execute_clear(); 
+void execute_clear(char **args); 
 int execute_history();
 int execute_ftype(char **args);
-int execute_kill(char ** args);
-
-// pour if
+int execute_kill(char **args);
 int execute_if(char **cmd);
+int execute_for(char **cmd);
+int execute_echos(char **args);
+int execute_forkbomb(char **args);
 
-// Fonctions pour gérer les redirections
-int hasredirection(char** cmd);
+// Fonctions de redirection
+int hasredirection(char **cmd);
 int execute_redirection(char **args, int pos);
 
-// Fonctions pour gérer les pipelines
-int execute_pipeline(char **commande, int pipeline);
+// Fonctions de pipeline
 int haspipeline(char **cmd);
+int execute_pipeline(char **commande, int pipeline);
 
-// Fonctions pour gérer les for 
-int execute_for(char **cmd);
-
-// Fonctions pour gérer les commandes externes
-int execute_executable(char **args);
+// Fonctions externes (définies dans excutable.c)
 int execute_external_command(char **args);
 
+// Fonctions utilitaires
+void print(const char *string, int sortie);
 
-void print(const char* string , int sortie){
-    write(sortie,string,strlen(string));
-    
+/* ------------------------------------------------------------------
+ * print() : affichage rapide
+ * ------------------------------------------------------------------ */
+void print(const char* string, int sortie) {
+    write(sortie, string, strlen(string));
 }
 
-// Fonction pour afficher le prompt
+/* ------------------------------------------------------------------
+ * AFFICHAGE DU PROMPT
+ * - Affiche [SIG] si last_status == 128 + SIGINT ou SIGTERM
+ * - Sinon affiche la valeur numérique
+ * ------------------------------------------------------------------ */
 void afficher_prompt(int last_status, char *buffer, size_t size) {
     char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
         const char *prefix = "getcwd: ";
-        print(prefix,STDERR_FILENO);
-        print(strerror(errno),STDERR_FILENO);
-        print("\n",STDERR_FILENO);
+        print(prefix, STDERR_FILENO);
+        print(strerror(errno), STDERR_FILENO);
+        print("\n", STDERR_FILENO);
         strcpy(cwd, "?");
     }
 
-    // Couleur en fonction du statut
-    char *color = (last_status == 0) ? "\001\033[32m\002" : "\001\033[91m\002"; // Vert ou rouge
-    char *reset_color = "\001\033[00m\002"; // Réinitialiser la couleur
+    // Couleur : vert si 0, rouge sinon
+    char *color = (last_status == 0) ? "\001\033[32m\002" : "\001\033[91m\002";
+    char *reset_color = "\001\033[00m\002";
 
-    // Format de la valeur de retour
-    char status_str[10];
-    if (last_status == 128 + SIGTERM || last_status == 128 + SIGINT) {
+    // Prépare la chaîne pour la partie [statut]
+    char status_str[16];
+    if (last_status == 128 + SIGINT || last_status == 128 + SIGTERM) {
         snprintf(status_str, sizeof(status_str), "SIG");
     } else {
         snprintf(status_str, sizeof(status_str), "%d", last_status);
     }
 
-    // tronquer 
+    // On limite la longueur du chemin
     size_t max_length = 27;
     if (last_status > 99) {
         max_length = 25;
@@ -79,29 +89,29 @@ void afficher_prompt(int last_status, char *buffer, size_t size) {
         max_length = 26;
     }
     char display_cwd[PATH_MAX];
-    if (strlen(cwd) > (max_length - 5)) { // 5 pour "...[x]"
-        snprintf(display_cwd, sizeof(display_cwd), "...%s", cwd + strlen(cwd) - (max_length - 5));
+    if (strlen(cwd) > (max_length - 5)) {
+        snprintf(display_cwd, sizeof(display_cwd), "...%s",
+                 cwd + strlen(cwd) - (max_length - 5));
     } else {
         strncpy(display_cwd, cwd, sizeof(display_cwd));
-        display_cwd[sizeof(display_cwd)-1] = '\0';
+        display_cwd[sizeof(display_cwd) - 1] = '\0';
     }
 
-    // contruire le prompt
+    // Construire le prompt final
     snprintf(buffer, size, "%s[%s]%s%s$ ", color, status_str, reset_color, display_cwd);
 }
 
-
-// complétion pour readline
+/* ------------------------------------------------------------------
+ * COMPLETION POUR READLINE
+ * ------------------------------------------------------------------ */
 char *init_completion(const char *text, int state) {
     static int list_index, len;
     const char *name;
 
-    if (!state) { // l'index de recherche et long
+    if (!state) {
         list_index = 0;
         len = strlen(text);
     }
-
-    // trouver une correspondance
     while ((name = internal_commands[list_index++])) {
         if (strncmp(name, text, len) == 0) {
             return strdup(name);
@@ -110,27 +120,29 @@ char *init_completion(const char *text, int state) {
     return NULL;
 }
 
-//  liste pour readline
 char **completion(const char *text, int start, int end) {
-    (void)end; //pour le Warn
-    // commandes internes
+    (void)end; // éviter le warning
     if (start == 0) {
+        // Compléter sur commandes internes
         return rl_completion_matches(text, init_completion);
     } else {
-        // les fichiers
+        // Compléter sur noms de fichiers
         return rl_completion_matches(text, rl_filename_completion_function);
     }
 }
 
-
+/* ------------------------------------------------------------------
+ * HISTORIQUE
+ * ------------------------------------------------------------------ */
 int execute_history() {
     HIST_ENTRY **the_list;
     int i = 0;
-    the_list = history_list(); //  liste de historique
+    the_list = history_list(); 
     if (the_list && the_list[i+1] != NULL ) {
         for (i = 0; the_list[i+1]; i++) {
             char buffer[1024];
-            int len = snprintf(buffer, sizeof(buffer), "%d  %s\n", i + history_base, the_list[i]->line);
+            int len = snprintf(buffer, sizeof(buffer), 
+                               "%d  %s\n", i + history_base, the_list[i]->line);
             if (len > 0) {
                 print(buffer, STDOUT_FILENO);
             }
@@ -139,36 +151,41 @@ int execute_history() {
         print("Aucune commande dans l'historique.\n", STDOUT_FILENO);
         return 1;
     }
-    return 0; // Retourne 0 pour indiquer un succès
+    return 0; 
 }
 
+/* ------------------------------------------------------------------
+ * execute_commande()
+ * - Détermine si c'est une commande interne ou externe
+ * ------------------------------------------------------------------ */
 int execute_commande(char **cmd, int status) {
     int last_status = status;
     int redirection = hasredirection(cmd);
     int pipeline = haspipeline(cmd);
-    if (strcmp(cmd[0],"for")==0){
+
+    if (strcmp(cmd[0], "for") == 0) {
         last_status = execute_for(cmd);
     }
-    else if (strcmp(cmd[0], "if") == 0) { 
+    else if (strcmp(cmd[0], "if") == 0) {
         last_status = execute_if(cmd);
     }
     else if (pipeline != 0) {
-        last_status = execute_pipeline(cmd, pipeline+1);
+        last_status = execute_pipeline(cmd, pipeline + 1);
     }
     else if (redirection != -1) {
         last_status = execute_redirection(cmd, redirection);
     }
     else if (strcmp(cmd[0], "pwd") == 0) { 
-        last_status = execute_pwd(cmd); 
+        last_status = execute_pwd(cmd);
     }
-    else if (strcmp(cmd[0], "cd") == 0) { 
-        last_status = execute_cd(cmd); 
+    else if (strcmp(cmd[0], "cd") == 0) {
+        last_status = execute_cd(cmd);
     }
     else if (strcmp(cmd[0], "clear") == 0) {
-        execute_clear(cmd); 
-        last_status = 0;     
+        execute_clear(cmd);
+        last_status = 0; 
     }
-    else if (strcmp(cmd[0], "history") == 0) {            
+    else if (strcmp(cmd[0], "history") == 0) {
         last_status = execute_history();
     }
     else if (strcmp(cmd[0], "ftype") == 0) {
@@ -177,7 +194,15 @@ int execute_commande(char **cmd, int status) {
     else if (strcmp(cmd[0], "kill") == 0) {
         last_status = execute_kill(cmd);
     }
-    else if (strcmp(cmd[0], "exit") == 0) { // Comparer avec "exit"
+    else if (strcmp(cmd[0], "echos") == 0) {
+        // Nouvelle commande "echos"
+        last_status = execute_echos(cmd);
+    }
+    else if (strcmp(cmd[0], "forkbomb") == 0) {
+        // Nouvelle commande "forkbomb"
+        last_status = execute_forkbomb(cmd);
+    }
+    else if (strcmp(cmd[0], "exit") == 0) {
         int exit_val = 0;
         if (cmd[1] != NULL) {
             exit_val = atoi(cmd[1]);
@@ -185,42 +210,42 @@ int execute_commande(char **cmd, int status) {
                 print("exit: Trop d'arguments\n", STDERR_FILENO);
                 return 1;
             }
-        }
-        else {
+        } else {
             exit_val = last_status;
         }
         exit(exit_val);
     }
     else {
+        // Commande externe
         last_status = execute_external_command(cmd);
     }
     return last_status;
 }
 
+/* ------------------------------------------------------------------
+ * execute_all_commands()
+ * - Gère la séparation des commandes par ; et &&
+ * - Gère les accolades { }, etc.
+ * ------------------------------------------------------------------ */
 int execute_all_commands(char **cmds, int status) {
     int last_status = status;
-    size_t commande_size = 64; // Taille initiale
+    size_t commande_size = 64; 
     char **commande = malloc(commande_size * sizeof(char*));
-    if (commande == NULL) {
+    if (!commande) {
         print("fsh: Erreur d'allocation\n", STDERR_FILENO);
         return 1;
     }
+
     size_t y = 0;    
     int entre_crochet = 0;
-
     size_t x = 0;
 
     while (cmds[x] != NULL) {
-        // Vérifier si on a besoin d'agrandir 'commande'
-        if (y >= commande_size - 1) { // Réserver une place pour NULL
+        if (y >= commande_size - 1) {
             commande_size *= 2;
             char **temp = realloc(commande, commande_size * sizeof(char*));
-            if (temp == NULL) {
+            if (!temp) {
                 print("fsh: Erreur de réallocation\n", STDERR_FILENO);
-                // Libérer les commandes déjà allouées
-                for (size_t i = 0; i < y; i++) {
-                    commande[i] = NULL; // Ne pas double free, suppose que cmds est géré ailleurs
-                }
                 free(commande);
                 return 1;
             }
@@ -228,9 +253,8 @@ int execute_all_commands(char **cmds, int status) {
         }
 
         if (strcmp(cmds[x], "{") == 0) {
-            entre_crochet += 1;
-            commande[y] = cmds[x];
-            y++;
+            entre_crochet++;
+            commande[y++] = cmds[x];
         }
         else if (strcmp(cmds[x], "}") == 0) {
             if (entre_crochet <= 0) {
@@ -238,20 +262,20 @@ int execute_all_commands(char **cmds, int status) {
                 free(commande);
                 return 1;
             }
-            entre_crochet -= 1;
-            commande[y] = cmds[x];
-            y++;
+            entre_crochet--;
+            commande[y++] = cmds[x];
         }
-        else if ((strcmp(cmds[x], ";") == 0 || strcmp(cmds[x], "&&") == 0) && entre_crochet == 0) {
-            commande[y] = NULL; // Terminer la commande
+        else if ((strcmp(cmds[x], ";") == 0 || strcmp(cmds[x], "&&") == 0) 
+                 && entre_crochet == 0) {
+            commande[y] = NULL; 
             if (commande[0] != NULL && y > 0) {
                 last_status = execute_commande(commande, last_status);
-                if (last_status == SIGINT + 128) {
+                // Si l'enfant a été interrompu par Ctrl+C => last_status = 130
+                if (last_status == 128 + SIGINT) {
                     break;
                 }
                 y = 0;
-            }
-            else {
+            } else {
                 print("fsh: Erreur de syntaxe\n", STDERR_FILENO);
                 last_status = 1;
                 break;
@@ -261,20 +285,16 @@ int execute_all_commands(char **cmds, int status) {
             }
         }
         else {
-            commande[y] = cmds[x];
-            y++;
+            commande[y++] = cmds[x];
         }
-
         x++;
     }
 
-    // Exécuter la dernière commande si elle existe
     if (y > 0) {
         commande[y] = NULL;
         last_status = execute_commande(commande, last_status);
     }
 
-    // Vérifier si toutes les accolades ont été fermées
     if (entre_crochet != 0) {
         print("fsh: Erreur de syntaxe : accolades non fermées\n", STDERR_FILENO);
         free(commande);
@@ -285,7 +305,9 @@ int execute_all_commands(char **cmds, int status) {
     return last_status;
 }
 
-//decouper la ligne en tokens
+/* ------------------------------------------------------------------
+ * DECUPAGE DE LA LIGNE EN TOKENS
+ * ------------------------------------------------------------------ */
 char **argument(char *line, int *num_tokens) {
     int bufsize = 64;
     int position = 0;
@@ -303,6 +325,7 @@ char **argument(char *line, int *num_tokens) {
         free(token);
         exit(EXIT_FAILURE);
     }
+
     int tok_pos = 0;
     int in_token = 0;
 
@@ -317,7 +340,7 @@ char **argument(char *line, int *num_tokens) {
             if (in_token) {
                 token[tok_pos] = '\0';
                 tokens[position++] = strdup(token);
-                if(!tokens[position-1]){
+                if (!tokens[position - 1]) {
                     print("fsh: allocation error\n", STDERR_FILENO);
                     free(token);
                     free(tokens);
@@ -326,7 +349,6 @@ char **argument(char *line, int *num_tokens) {
                 tok_pos = 0;
                 in_token = 0;
 
-                // Réallouer si nécessaire
                 if (position >= bufsize) {
                     bufsize += 64;
                     tokens = realloc(tokens, bufsize * sizeof(char*));
@@ -356,6 +378,9 @@ char **argument(char *line, int *num_tokens) {
     return tokens;
 }
 
+/* ------------------------------------------------------------------
+ * Libération des tokens
+ * ------------------------------------------------------------------ */
 void free_tokens(char **tokens) {
     if (tokens) {
         for (int i = 0; tokens[i] != NULL; i++) {
@@ -365,54 +390,42 @@ void free_tokens(char **tokens) {
     }
 }
 
-
-
-// gestion du signal 
-void handle_sigint() {
-    rl_on_new_line();
-    rl_replace_line("", 0);
-    rl_redisplay();
-}
-
+/* ------------------------------------------------------------------
+ * MAIN
+ * - On ignore SIGINT, SIGTSTP, SIGTERM dans le parent
+ *   (pour que seul l'enfant reçoive le Ctrl+C)
+ * ------------------------------------------------------------------ */
 int main() {
-    char *ligne;
+    char *ligne = NULL;
     int last_status = 0;
-    char prompt[1024]; // Buffer pour le prompt
+    char prompt[1024];
     rl_outstream = stderr;
 
-    // gestionnaires de signaux
-    signal(SIGINT, handle_sigint);
-    signal(SIGTSTP, SIG_IGN);
-    signal(SIGTERM, SIG_IGN);
+    // Ignorer Ctrl+C, Ctrl+Z, SIGTERM dans le shell parent
+    struct sigaction sa_ign;
+    memset(&sa_ign, 0, sizeof(sa_ign));
+    sa_ign.sa_handler = SIG_IGN;
+    sigemptyset(&sa_ign.sa_mask);
+    sa_ign.sa_flags = 0;
+    sigaction(SIGINT, &sa_ign, NULL);
+    sigaction(SIGTSTP, &sa_ign, NULL);
+    sigaction(SIGTERM, &sa_ign, NULL);
 
-    rl_attempted_completion_function = completion; // pour Tab
+    // Fonction de complétion
+    rl_attempted_completion_function = completion;
 
-    // Boucle principale du shell
     while (1) {
-        // Construire le prompt
         afficher_prompt(last_status, prompt, sizeof(prompt));
-
-        // Lire la ligne de commande avec readline en utilisant le prompt construit
         ligne = readline(prompt);
 
-        // Vérifier si un signal SIGTERM a été reçu
-        if (SIG_ERR == signal(SIGTERM, SIG_IGN)) {
-            if (strlen(ligne) != 0) {
-                print("\n", STDOUT_FILENO);
-                break;
-            }
-        }
-
-        if (!ligne) { // EOF (Ctrl-D)
+        if (!ligne) { 
+            // EOF (Ctrl+D)
             print("\n", STDOUT_FILENO);
             break;
         }
 
-        // Si la ligne n'est pas vide, l'ajouter à l'historique
         if (strlen(ligne) > 0) {
             add_history(ligne);
-
-            // Copier la ligne pour le traitement (strtok modifie la chaîne)
             char *line_copy = strdup(ligne);
             if (!line_copy) {
                 print("strdup: ", STDERR_FILENO);
@@ -422,22 +435,22 @@ int main() {
                 continue;
             }
 
-            //decouper les tokens
             int num_tokens = 0;
             char **tokens = argument(line_copy, &num_tokens);
-            if (tokens==NULL) {
+            if (!tokens) {
                 print("fsh: Erreur d'allocation\n", STDERR_FILENO);
-                free(tokens);
                 free(line_copy);
                 free(ligne);
                 exit(EXIT_FAILURE);
             }
-            last_status=execute_all_commands(tokens,last_status);
+
+            // Exécuter la (les) commande(s)
+            last_status = execute_all_commands(tokens, last_status);
+
             free_tokens(tokens);
             free(line_copy);
         }
-    
         free(ligne);
     }
     return last_status;
-}  
+}
