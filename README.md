@@ -1,4 +1,4 @@
-# FSH Sifaks Ilias Rayan
+# FSH 
 
 ### Fonctionnalités principales
 
@@ -92,7 +92,7 @@
 Utilisez la commande suivante pour cloner le projet :
     
     ```bash
-    git clone https://moule.informatique.univ-paris-diderot.fr/poulalho/sy5-2024-2025.git
+    git clone https://github.com/RayanVSS/FSH.git
     ```
     
 3. **Déplacez vous** 
